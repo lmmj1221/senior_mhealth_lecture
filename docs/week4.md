@@ -207,13 +207,52 @@ asia-northeast3-docker.pkg.dev/senior-mhealth-lee/backend/ai-service:v1
 ### Docker Desktop 설치 가이드 👤
 
 #### Windows 설치 방법
+
+##### WSL 2 사전 설치 (필수)
+1. **WSL 2 활성화**
+   ```powershell
+   # PowerShell을 관리자 권한으로 실행
+
+   # WSL 기능 활성화
+   dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
+
+   # Virtual Machine 기능 활성화
+   dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
+
+   # 컴퓨터 재시작 필요
+   ```
+
+2. **WSL 2 설치 및 설정**
+   ```powershell
+   # 재시작 후 PowerShell 관리자 권한으로 실행
+
+   # WSL 2 Linux 커널 업데이트
+   wsl --update
+
+   # WSL 2를 기본 버전으로 설정
+   wsl --set-default-version 2
+
+   # Ubuntu 설치 (Microsoft Store에서도 가능)
+   wsl --install -d Ubuntu
+
+   # 설치 확인
+   wsl --list --verbose
+   ```
+
+3. **시스템 요구사항 확인**
+   - Windows 10 버전 1903 이상 (빌드 18362 이상)
+   - Windows 11 모든 버전
+   - 64비트 시스템
+   - 4GB 이상 RAM
+
+##### Docker Desktop 설치
 1. **Docker Desktop for Windows 다운로드**
    - https://www.docker.com/products/docker-desktop/ 접속
    - "Download for Windows" 클릭
    - 설치 파일 실행 (약 500MB)
 
 2. **설치 과정**
-   - WSL 2 백엔드 사용 체크 ✅
+   - "Use WSL 2 instead of Hyper-V" 옵션 체크 ✅
    - 설치 완료 후 재부팅 필요
 
 3. **설치 확인**
@@ -221,6 +260,19 @@ asia-northeast3-docker.pkg.dev/senior-mhealth-lee/backend/ai-service:v1
    # PowerShell에서 실행
    docker --version
    docker run hello-world
+
+   # WSL 통합 확인
+   wsl -l -v
+   # Ubuntu와 docker-desktop이 표시되어야 함
+   ```
+
+4. **문제 해결**
+   ```powershell
+   # "WSL 2 installation is incomplete" 오류 시
+   # https://aka.ms/wsl2kernel 에서 커널 업데이트 다운로드
+
+   # Docker Desktop이 시작되지 않을 때
+   # Settings → General → Use the WSL 2 based engine 체크
    ```
 
 #### Mac 설치 방법
