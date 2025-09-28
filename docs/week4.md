@@ -78,9 +78,9 @@ Docker 컨테이너 기술을 이해하고 Google Cloud Run을 사용하여 AI S
 
 **💡 도시락 비유로 이해하기:**
 - **Dockerfile** = 레시피 📝
-- **Docker Image** = 완성된 도시락 세트 🍱
-- **Docker Container** = 먹고 있는 도시락 🥢
-- **Docker Hub/Artifact Registry** = 도시락 판매점 🏪
+- **Docker Image** = 완성된 도시락 세트 
+- **Docker Container** = 먹고 있는 도시락 : 이 비유가 맞나? 이상하다. 
+- **Docker Hub/Artifact Registry** = 도시락 판매점 
 
 ### Dockerfile 구조
 
@@ -298,6 +298,22 @@ asia-northeast3-docker.pkg.dev/senior-mhealth-lee/backend/ai-service:v1
 - Settings → Resources에서 메모리/CPU 할당 조정 가능
 - 권장 설정: Memory 4GB, CPU 2 cores 이상
 
+### 🤖 Vibe 코딩 프롬프트 - Docker 설치
+
+```
+Docker Desktop을 설치해주세요.
+
+Windows 사용자:
+1. WSL 2를 먼저 설치해주세요
+2. Docker Desktop for Windows를 다운로드하고 설치해주세요
+3. docker --version으로 확인해주세요
+
+Mac 사용자:
+1. Docker Desktop for Mac을 다운로드해주세요
+2. Applications에 설치해주세요
+3. docker --version으로 확인해주세요
+```
+
 ### 사전 준비 확인 🤖
 
 ```bash
@@ -318,6 +334,16 @@ gcloud services enable cloudbuild.googleapis.com
 ls serviceAccountKey.json
 ```
 
+### 🤖 Vibe 코딩 프롬프트 - 프로젝트 설정
+
+```
+Google Cloud에서 Cloud Run과 Docker를 위한 환경을 설정해주세요.
+
+1. 현재 프로젝트를 ? 로 설정해주세요
+2. Cloud Run, Container Registry, Cloud Build API를 활성화해주세요
+3. serviceAccountKey.json 파일이 있는지 확인해주세요
+```
+
 ---
 
 ## Step 1: AI Service 컨테이너화 및 배포 (Docker 빌드)
@@ -328,6 +354,17 @@ ls serviceAccountKey.json
 2. API 활성화 확인
 3. 프로젝트 선택: senior-mhealth-lee
 4. 서비스 계정 권한 확인
+
+### 🤖 Vibe 코딩 프롬프트 - Vertex AI 설정
+
+```
+Google Cloud에서 Vertex AI를 설정해주세요.
+
+1. Vertex AI Console에 접속해주세요
+2. Vertex AI API가 활성화되어 있는지 확인해주세요
+3. 필요하면 API를 활성화해주세요: gcloud services enable aiplatform.googleapis.com
+4. 서비스 계정에 Vertex AI User 권한이 있는지 확인해주세요
+```
 
 ### 1.2 AI Service 환경 설정 🤖
 
@@ -346,6 +383,21 @@ MODEL_NAME=gemini-pro
 ENVIRONMENT=production
 PORT=8081
 EOF
+```
+
+### 🤖 Vibe 코딩 프롬프트 - AI Service 설정
+
+```
+AI Service를 위한 환경을 설정해주세요.
+
+1. backend/ai-service 폴더로 이동해주세요
+2. Vertex AI API를 활성화해주세요
+3. .env 파일을 만들고 다음 설정을 추가해주세요:
+   - GOOGLE_CLOUD_PROJECT=senior-mhealth-lee
+   - VERTEX_AI_LOCATION=asia-northeast3
+   - MODEL_NAME=gemini-pro
+   - ENVIRONMENT=production
+   - PORT=8081
 ```
 
 ### 1.3 Dockerfile 생성 🤖
@@ -385,20 +437,19 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8081"]
 EOF
 ```
 
-### 1.4 로컬 테스트 (선택사항) 🤖
+### 🤖 Vibe 코딩 프롬프트 - Dockerfile 생성
 
-```bash
-# Docker 이미지 빌드
-docker build -t ai-service-local .
+```
+AI Service를 위한 Dockerfile을 생성해주세요.
 
-# 컨테이너 실행
-docker run -p 8081:8081 --env-file .env ai-service-local
-
-# 다른 터미널에서 테스트
-curl http://localhost:8081/health
+1. backend/ai-service 폴더에서 작업해주세요
+2. Python 3.9-slim을 베이스 이미지로 사용해주세요
+3. requirements.txt의 패키지들을 설치해주세요
+4. PORT 8081에서 uvicorn으로 앱을 실행해주세요
+5. 헬스체크 endpoint도 설정해주세요
 ```
 
-### 1.5 Docker로 이미지 빌드 및 푸시 🤖
+### 1.4 Docker로 이미지 빌드 및 푸시 🤖
 
 > ⚠️ **중요**: AI Service는 Docker를 사용하여 로컬에서 빌드하고 Registry에 푸시합니다.
 
@@ -428,6 +479,18 @@ gcloud artifacts docker images list \
   asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend
 ```
 
+### 🤖 Vibe 코딩 프롬프트 - Docker 이미지 빌드 및 푸시
+
+```
+AI Service Docker 이미지를 빌드하고 Artifact Registry에 푸시해주세요.
+
+1. Artifact Registry에 backend 저장소를 생성해주세요 (asia-northeast3)
+2. Docker 인증을 설정해주세요
+3. 이미지를 빌드해주세요 (태그: v1)
+4. 빌드한 이미지를 Registry에 푸시해주세요
+5. 푸시된 이미지를 확인해주세요
+```
+
 ### 1.6 Cloud Run 배포 🤖
 
 ```bash
@@ -453,6 +516,20 @@ export AI_SERVICE_URL=$(gcloud run services describe senior-mhealth-ai \
 echo "AI Service URL: $AI_SERVICE_URL"
 ```
 
+### 🤖 Vibe 코딩 프롬프트 - AI Service Cloud Run 배포
+
+```
+AI Service를 Cloud Run에 배포해주세요.
+
+1. 서비스 이름: senior-mhealth-ai
+2. 리전: asia-northeast3
+3. 메모리: 2Gi, CPU: 2
+4. 타임아웃: 300초, 최대 인스턴스: 5
+5. 인증 없이 접근 가능하도록 설정
+6. 서비스 계정과 환경 변수들을 설정해주세요
+7. 배포된 서비스 URL을 확인해주세요
+```
+
 ### 1.7 서비스 검증 🤖
 
 ```bash
@@ -475,6 +552,16 @@ curl -X POST ${AI_SERVICE_URL}/analyze \
   }'
 ```
 
+### 🤖 Vibe 코딩 프롬프트 - AI Service 검증
+
+```
+AI Service가 제대로 배포되었는지 확인해주세요.
+
+1. 헬스체크 엔드포인트를 호출해주세요
+2. /analyze 엔드포인트로 테스트 요청을 보내주세요
+3. 응답이 정상적으로 오는지 확인해주세요
+```
+
 ---
 
 ## Step 2: API Service 컨테이너화 및 배포 (Cloud Build)
@@ -493,6 +580,17 @@ FIREBASE_PROJECT_ID=${PROJECT_ID}
 NODE_ENV=production
 PORT=8080
 EOF
+```
+
+### 🤖 Vibe 코딩 프롬프트 - API Service 환경 설정
+
+```
+API Service를 위한 환경을 설정해주세요.
+
+1. backend/api-service 폴더로 이동해주세요
+2. .env 파일을 생성해주세요
+3. 프로젝트 ID와 AI Service URL을 환경 변수로 추가해주세요
+4. Firebase 프로젝트 ID와 포트 8080을 설정해주세요
 ```
 
 ### 2.2 Dockerfile 생성 🤖
@@ -525,6 +623,17 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 # 서버 실행
 CMD ["node", "server.js"]
 EOF
+```
+
+### 🤖 Vibe 코딩 프롬프트 - API Service Dockerfile 생성
+
+```
+API Service를 위한 Dockerfile을 생성해주세요.
+
+1. Node.js 18-alpine을 베이스 이미지로 사용해주세요
+2. npm ci로 production 의존성만 설치해주세요
+3. PORT 8080에서 node server.js로 앱을 실행해주세요
+4. 헬스체크 endpoint도 설정해주세요
 ```
 
 ### 2.3 Cloud Build를 사용한 이미지 빌드 및 푸시 🤖
@@ -595,12 +704,16 @@ gcloud artifacts docker images list \
   asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend
 ```
 
-#### 로컬 Docker 빌드 (선택사항 - 테스트용)
+### 🤖 Vibe 코딩 프롬프트 - Cloud Build 실행
 
-```bash
-# 로컬에서 테스트하고 싶은 경우만 실행
-# docker build -t api-service-local .
-# docker run -p 8080:8080 --env-file .env api-service-local
+```
+Cloud Build를 사용하여 API Service 이미지를 빌드해주세요.
+
+1. cloudbuild.yaml 파일을 생성해주세요
+2. Docker 빌드와 푸시 단계를 설정해주세요
+3. Artifact Registry backend 저장소를 사용해주세요
+4. Cloud Build를 실행하여 이미지를 빌드해주세요
+5. 빌드된 이미지를 확인해주세요
 ```
 
 ### 2.4 Cloud Run 배포 🤖
@@ -627,6 +740,21 @@ export API_SERVICE_URL=$(gcloud run services describe senior-mhealth-api \
 echo "API Service URL: $API_SERVICE_URL"
 ```
 
+### 🤖 Vibe 코딩 프롬프트 - API Service Cloud Run 배포
+
+```
+API Service를 Cloud Run에 배포해주세요.
+
+1. 서비스 이름: senior-mhealth-api
+2. Cloud Build로 빌드한 이미지를 사용해주세요
+3. 리전: asia-northeast3
+4. 메모리: 1Gi, CPU: 1
+5. 타임아웃: 60초, 최대 인스턴스: 10
+6. 인증 없이 접근 가능하도록 설정
+7. 환경 변수로 프로젝트 ID와 AI Service URL을 설정해주세요
+8. 배포된 서비스 URL을 확인해주세요
+```
+
 ### 2.5 서비스 검증 🤖
 
 ```bash
@@ -640,6 +768,16 @@ curl -X POST ${API_SERVICE_URL}/api/analyze \
     "text": "테스트 메시지입니다",
     "userId": "test-user"
   }'
+```
+
+### 🤖 Vibe 코딩 프롬프트 - API Service 검증
+
+```
+API Service가 제대로 배포되었는지 확인해주세요.
+
+1. 헬스체크 엔드포인트를 호출해주세요
+2. /api/analyze 엔드포인트로 테스트 요청을 보내주세요
+3. AI Service와의 연동이 정상적으로 작동하는지 확인해주세요
 ```
 
 ---
@@ -735,6 +873,17 @@ gcloud run deploy senior-mhealth-ai \
   --region asia-northeast3
 ```
 
+### 🤖 Vibe 코딩 프롬프트 - AI Service 업데이트
+
+```
+AI Service를 새 버전으로 업데이트해주세요.
+
+1. backend/ai-service 폴더로 이동해주세요
+2. Docker로 새 버전(v2) 이미지를 빌드해주세요
+3. 빌드한 이미지를 Registry에 푸시해주세요
+4. Cloud Run에 새 리비전을 배포해주세요
+```
+
 #### API Service 업데이트 (Cloud Build)
 
 ```bash
@@ -754,6 +903,17 @@ gcloud run deploy senior-mhealth-api \
   --region asia-northeast3
 ```
 
+### 🤖 Vibe 코딩 프롬프트 - API Service 업데이트
+
+```
+API Service를 새 버전으로 업데이트해주세요.
+
+1. backend/api-service 폴더로 이동해주세요
+2. Cloud Build로 새 버전(v2)을 빌드해주세요
+3. Cloud Run에 새 이미지를 배포해주세요
+4. 배포가 성공했는지 확인해주세요
+```
+
 #### 트래픽 분할 (카나리 배포)
 
 ```bash
@@ -763,6 +923,17 @@ gcloud run services update-traffic senior-mhealth-ai \
   --to-revisions=LATEST=10 \
   --platform managed \
   --region asia-northeast3
+```
+
+### 🤖 Vibe 코딩 프롬프트 - 카나리 배포
+
+```
+카나리 배포를 설정해주세요.
+
+1. 새 버전에 10%의 트래픽만 보내주세요
+2. 나머지 90%는 기존 버전으로 보내주세요
+3. 문제가 없다면 점진적으로 트래픽을 늘려주세요
+4. 문제가 발생하면 즉시 롤백해주세요
 ```
 
 ---
@@ -932,6 +1103,136 @@ gcloud run services update senior-mhealth-api \
 - ✅ Container Registry 활용
 - ✅ 마이크로서비스 아키텍처 구현
 - ✅ 클라우드 네이티브 배포 전략
+
+---
+
+## 🔍 핵심 개념 정리: AI Service vs API Service
+
+### 서비스 구조와 역할
+
+이 프로젝트는 **마이크로서비스 아키텍처**를 사용하여 각 서비스가 독립적으로 배포되고 운영됩니다.
+
+#### 🏗️ 전체 시스템 아키텍처
+
+```
+┌──────────────────────────────────────────────────────┐
+│           Frontend Applications                       │
+│   📱 Mobile App (Flutter)  💻 Web App (Next.js)      │
+└──────────────────────────────────────────────────────┘
+                           ⬇️ HTTPS
+┌──────────────────────────────────────────────────────┐
+│        API Service (backend/api-service)             │
+│              🎯 Port: 8080                           │
+│         "중앙 비즈니스 로직 서버"                      │
+│                                                      │
+│  역할:                                               │
+│  • 클라이언트 요청의 진입점                           │
+│  • 사용자 인증 및 권한 관리                          │
+│  • 데이터 검증 및 변환                               │
+│  • Firestore 데이터베이스 CRUD                       │
+│  • AI Service와의 통신 중계                          │
+│  • 비즈니스 규칙 적용                                │
+└──────────────────────────────────────────────────────┘
+                           ⬇️ HTTP (내부 통신)
+┌──────────────────────────────────────────────────────┐
+│         AI Service (backend/ai-service)              │
+│              🤖 Port: 8081                           │
+│           "AI 분석 전문 서비스"                       │
+│                                                      │
+│  역할:                                               │
+│  • 음성 → 텍스트 변환 (Speech-to-Text)               │
+│  • 감정 분석 및 정신건강 평가                         │
+│  • Vertex AI (Gemini) 직접 연동                      │
+│  • AI 모델 추론 및 분석                              │
+└──────────────────────────────────────────────────────┘
+```
+
+### 📊 상세 비교표
+
+| 구분 | AI Service | API Service |
+|------|-----------|-------------|
+| **위치** | `backend/ai-service/` | `backend/api-service/` |
+| **포트** | 8081 | 8080 |
+| **언어** | Python | Node.js 또는 Python |
+| **프레임워크** | FastAPI | Express 또는 FastAPI |
+| **주요 기능** | AI 분석 전문 | 비즈니스 로직 처리 |
+| **클라이언트 접근** | 간접 (API Service 경유) | 직접 (Frontend와 통신) |
+| **데이터베이스** | 접근 안함 | Firestore 직접 조작 |
+| **인증** | 없음 (내부 서비스) | Firebase Auth 통합 |
+| **확장성** | 독립적 스케일링 | 독립적 스케일링 |
+
+### 🔄 실제 요청 흐름 예시
+
+**시니어 음성 분석 요청 처리 과정:**
+
+```
+1. 📱 모바일 앱: 음성 녹음
+   ↓
+2. 🌐 POST /api/voice_analysis (API Service)
+   - 사용자 인증 확인
+   - 요청 데이터 검증
+   ↓
+3. 🔄 POST /analyze-audio (AI Service 호출)
+   - 음성을 텍스트로 변환
+   - Vertex AI로 감정 분석
+   - 정신건강 점수 계산
+   ↓
+4. 💾 Firestore 저장 (API Service)
+   - 분석 결과 저장
+   - 사용자 히스토리 업데이트
+   ↓
+5. 📱 응답 반환 (모바일 앱)
+   - 분석 결과 표시
+   - 건강 권고사항 제공
+```
+
+### 💡 왜 이렇게 분리했나요?
+
+#### 1. **관심사의 분리 (Separation of Concerns)**
+- AI Service: AI/ML 로직에만 집중
+- API Service: 비즈니스 로직과 데이터 관리에 집중
+
+#### 2. **독립적 확장성**
+- AI 요청이 많을 때: AI Service만 스케일 업
+- 일반 API 요청이 많을 때: API Service만 스케일 업
+- 비용 최적화 가능
+
+#### 3. **기술 스택 유연성**
+- AI Service: Python (ML 라이브러리 생태계 활용)
+- API Service: Node.js (빠른 I/O 처리)
+- 각 서비스에 최적의 언어 사용
+
+#### 4. **장애 격리**
+- AI Service 장애 시: 기본 기능은 정상 작동
+- API Service 장애 시: AI 서비스는 독립적 운영 가능
+- 전체 시스템 안정성 향상
+
+#### 5. **개발 팀 분리**
+- AI 팀: AI Service 개발
+- 백엔드 팀: API Service 개발
+- 병렬 개발 가능
+
+### 🚀 Cloud Run 배포 전략
+
+두 서비스는 독립적으로 Cloud Run에 배포되어:
+- **자동 스케일링**: 각자의 부하에 따라 0~N개 인스턴스
+- **서로 다른 리소스 할당**:
+  - AI Service: 메모리 2Gi, CPU 2 (무거운 AI 처리)
+  - API Service: 메모리 1Gi, CPU 1 (가벼운 비즈니스 로직)
+- **독립적 업데이트**: 한 서비스 업데이트 시 다른 서비스 영향 없음
+
+### 📝 학생들이 자주 하는 실수
+
+1. **❌ 잘못된 접근**: Frontend에서 AI Service 직접 호출
+   **✅ 올바른 접근**: Frontend → API Service → AI Service
+
+2. **❌ 잘못된 포트**: API Service를 8081로 설정
+   **✅ 올바른 포트**: API Service(8080), AI Service(8081)
+
+3. **❌ 잘못된 인증**: AI Service에 Firebase Auth 추가
+   **✅ 올바른 인증**: API Service에만 인증, AI Service는 내부 통신만
+
+이러한 마이크로서비스 구조를 이해하면 확장 가능하고 유지보수가 쉬운 클라우드 네이티브 애플리케이션을 구축할 수 있습니다!
 
 ---
 
