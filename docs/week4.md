@@ -145,24 +145,37 @@ CMD ["node", "server.js"]
 | GKE | 복잡한 오케스트레이션 | 간단한 웹 서비스 |
 | Cloud Functions | 이벤트 기반 처리 | 큰 패키지, 긴 실행 시간 |
 
-### 4. Container Registry
+### 4. Container Registry → Artifact Registry
 
-### Google Container Registry (GCR)
+### Google Artifact Registry (GCR의 진화 버전)
+
+> ⚠️ **중요 변경사항**: Google Container Registry(GCR)는 2024년부터 Artifact Registry로 대체됩니다.
+> - GCR은 여전히 작동하지만, 신규 프로젝트는 Artifact Registry 사용 권장
+> - Artifact Registry는 Docker 이미지뿐만 아니라 다양한 패키지 지원
 
 ```
-GCR 구조:
-gcr.io/[PROJECT-ID]/[IMAGE-NAME]:[TAG]
+Artifact Registry 구조:
+[REGION]-docker.pkg.dev/[PROJECT-ID]/[REPOSITORY]/[IMAGE]:[TAG]
 
-예시:
+예시 (신규):
+asia-northeast3-docker.pkg.dev/senior-mhealth-lee/backend/ai-service:v1
+└────────────┘└──────────────┘└──────────────┘└──────┘└────────┘└─┘
+    리전        도메인            프로젝트 ID      저장소    이미지    태그
+
+기존 GCR (여전히 작동):
 gcr.io/senior-mhealth-lee/ai-service:v1
-└──────┘└──────────────┘└────────┘└─┘
-  GCR     프로젝트 ID      이미지명   태그
 ```
 
 **💡 클라우드 창고로 이해하기:**
 - **로컬**: docker build로 이미지 생성 (내 컴퓨터에만 존재)
-- **GCR**: docker push로 창고에 보관 (팀원 누구나 사용 가능)
-- **Cloud Run**: GCR에서 이미지 가져와서 실행
+- **Artifact Registry**: docker push로 창고에 보관 (팀원 누구나 사용 가능)
+- **Cloud Run**: Registry에서 이미지 가져와서 실행
+
+**🆕 Artifact Registry의 장점:**
+- 리전별 저장소 (한국 리전 사용 가능 → 더 빠른 속도)
+- 세밀한 권한 관리
+- 취약점 스캔 강화
+- npm, Maven, Python 패키지도 저장 가능
 
 ### 이미지 태깅 전략
 
@@ -290,16 +303,41 @@ docker run -p 8081:8081 --env-file .env ai-service-local
 curl http://localhost:8081/health
 ```
 
-### 1.5 GCR에 이미지 푸시 🤖
+### 1.5 Registry에 이미지 푸시 🤖
+
+#### 옵션 A: Artifact Registry 사용 (권장) 🆕
+
+```bash
+# Artifact Registry 저장소 생성 (처음 한 번만)
+gcloud artifacts repositories create backend \
+  --repository-format=docker \
+  --location=asia-northeast3 \
+  --description="Backend services"
+
+# Artifact Registry 인증
+gcloud auth configure-docker asia-northeast3-docker.pkg.dev
+
+# 프로젝트 ID 설정
+export PROJECT_ID=$(gcloud config get-value project)
+
+# 이미지 빌드 (Artifact Registry 태그)
+docker build -t asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend/ai-service:v1 .
+
+# 이미지 푸시
+docker push asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend/ai-service:v1
+
+# 푸시 확인
+gcloud artifacts docker images list \
+  asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend
+```
+
+#### 옵션 B: Container Registry 사용 (레거시)
 
 ```bash
 # Container Registry 인증
 gcloud auth configure-docker
 
-# 프로젝트 ID 설정
-export PROJECT_ID=$(gcloud config get-value project)
-
-# 이미지 빌드 (GCR 태그 포함)
+# 이미지 빌드 (GCR 태그)
 docker build -t gcr.io/${PROJECT_ID}/senior-mhealth-ai:v1 .
 
 # 이미지 푸시
@@ -312,9 +350,9 @@ gcloud container images list --repository=gcr.io/${PROJECT_ID}
 ### 1.6 Cloud Run 배포 🤖
 
 ```bash
-# Cloud Run 서비스 배포 (Vertex AI는 서비스 계정으로 인증)
+# 옵션 A: Artifact Registry 이미지 사용 (권장)
 gcloud run deploy senior-mhealth-ai \
-  --image gcr.io/${PROJECT_ID}/senior-mhealth-ai:v1 \
+  --image asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend/ai-service:v1 \
   --platform managed \
   --region asia-northeast3 \
   --memory 2Gi \
@@ -324,6 +362,9 @@ gcloud run deploy senior-mhealth-ai \
   --allow-unauthenticated \
   --service-account=automation-sa@${PROJECT_ID}.iam.gserviceaccount.com \
   --set-env-vars="GOOGLE_CLOUD_PROJECT=${PROJECT_ID},VERTEX_AI_LOCATION=asia-northeast3,MODEL_NAME=gemini-pro,ENVIRONMENT=production"
+
+# 옵션 B: GCR 이미지 사용 (레거시)
+# --image gcr.io/${PROJECT_ID}/senior-mhealth-ai:v1
 
 # 배포 성공 시 URL 저장
 export AI_SERVICE_URL=$(gcloud run services describe senior-mhealth-ai \
@@ -411,19 +452,21 @@ EOF
 ### 2.3 GCR에 이미지 푸시 🤖
 
 ```bash
-# 이미지 빌드
-docker build -t gcr.io/${PROJECT_ID}/senior-mhealth-api:v1 .
+# 옵션 A: Artifact Registry (권장)
+docker build -t asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend/api-service:v1 .
+docker push asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend/api-service:v1
 
-# 이미지 푸시
-docker push gcr.io/${PROJECT_ID}/senior-mhealth-api:v1
+# 옵션 B: GCR (레거시)
+# docker build -t gcr.io/${PROJECT_ID}/senior-mhealth-api:v1 .
+# docker push gcr.io/${PROJECT_ID}/senior-mhealth-api:v1
 ```
 
 ### 2.4 Cloud Run 배포 🤖
 
 ```bash
-# API Service 배포
+# 옵션 A: Artifact Registry 이미지 사용 (권장)
 gcloud run deploy senior-mhealth-api \
-  --image gcr.io/${PROJECT_ID}/senior-mhealth-api:v1 \
+  --image asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend/api-service:v1 \
   --platform managed \
   --region asia-northeast3 \
   --memory 1Gi \
@@ -432,6 +475,9 @@ gcloud run deploy senior-mhealth-api \
   --max-instances 10 \
   --allow-unauthenticated \
   --set-env-vars="GOOGLE_CLOUD_PROJECT=${PROJECT_ID},AI_SERVICE_URL=${AI_SERVICE_URL}"
+
+# 옵션 B: GCR 이미지 사용 (레거시)
+# --image gcr.io/${PROJECT_ID}/senior-mhealth-api:v1
 
 # URL 저장
 export API_SERVICE_URL=$(gcloud run services describe senior-mhealth-api \
@@ -535,12 +581,17 @@ gcloud monitoring metrics-descriptors list \
 
 ```bash
 # 코드 수정 후 새 버전 배포
-docker build -t gcr.io/${PROJECT_ID}/senior-mhealth-ai:v2 .
-docker push gcr.io/${PROJECT_ID}/senior-mhealth-ai:v2
+# 옵션 A: Artifact Registry (권장)
+docker build -t asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend/ai-service:v2 .
+docker push asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend/ai-service:v2
+
+# 옵션 B: GCR (레거시)
+# docker build -t gcr.io/${PROJECT_ID}/senior-mhealth-ai:v2 .
+# docker push gcr.io/${PROJECT_ID}/senior-mhealth-ai:v2
 
 # 새 리비전 배포
 gcloud run deploy senior-mhealth-ai \
-  --image gcr.io/${PROJECT_ID}/senior-mhealth-ai:v2 \
+  --image asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend/ai-service:v2 \
   --platform managed \
   --region asia-northeast3
 

@@ -85,17 +85,17 @@ flutter pub deps
 
 ```bash
 # Firebase 설정 (Week 3에서 생성)
-FIREBASE_API_KEY=AIzaSyBADpElIbBcQ1-euIP2apXxJKn3lXUdHS4
-FIREBASE_AUTH_DOMAIN=senior-mhealth-lee.firebaseapp.com
-FIREBASE_PROJECT_ID=senior-mhealth-lee
-FIREBASE_STORAGE_BUCKET=senior-mhealth-lee.firebasestorage.app
-FIREBASE_MESSAGING_SENDER_ID=716250412647
-FIREBASE_APP_ID=1:716250412647:android:xxxxxxxxxxxxx
+FIREBASE_API_KEY=your_firebase_api_key_here
+FIREBASE_AUTH_DOMAIN=your_project_id.firebaseapp.com
+FIREBASE_PROJECT_ID=your_project_id
+FIREBASE_STORAGE_BUCKET=your_project_id.firebasestorage.app
+FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+FIREBASE_APP_ID=your_app_id
 
 # API URLs (Week 4, 5에서 배포)
-API_BASE_URL=https://asia-northeast3-senior-mhealth-lee.cloudfunctions.net/api
-AI_SERVICE_URL=https://senior-mhealth-ai-xxxxx-an.a.run.app
-API_SERVICE_URL=https://senior-mhealth-api-xxxxx-an.a.run.app
+API_BASE_URL=https://asia-northeast3-your-project-id.cloudfunctions.net/api
+AI_SERVICE_URL=https://your-ai-service-xxxxx-an.a.run.app
+API_SERVICE_URL=https://your-api-service-xxxxx-an.a.run.app
 
 # 환경 설정
 ENVIRONMENT=production
@@ -114,7 +114,7 @@ dart pub global activate flutterfire_cli
 
 # Firebase 프로젝트 구성
 flutterfire configure \
-  --project=senior-mhealth-lee \
+  --project=your-project-id \
   --platforms=android,ios
 
 # 자동으로 생성되는 파일들:
@@ -130,14 +130,14 @@ flutterfire configure \
 ```json
 {
   "project_info": {
-    "project_number": "716250412647",
-    "project_id": "senior-mhealth-lee",
-    "storage_bucket": "senior-mhealth-lee.firebasestorage.app"
+    "project_number": "your-project-number",
+    "project_id": "your-project-id",
+    "storage_bucket": "your-project-id.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:716250412647:android:xxxxx",
+        "mobilesdk_app_id": "1:your-project-number:android:xxxxx",
         "android_client_info": {
           "package_name": "com.example.senior_mhealth_mobile"
         }
