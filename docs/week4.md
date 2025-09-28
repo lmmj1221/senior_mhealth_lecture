@@ -145,7 +145,7 @@ CMD ["node", "server.js"]
 | GKE | 복잡한 오케스트레이션 | 간단한 웹 서비스 |
 | Cloud Functions | 이벤트 기반 처리 | 큰 패키지, 긴 실행 시간 |
 
-### 4. Container Registry → Artifact Registry
+### 4. Artifact Registry
 
 ### Google Artifact Registry
 
@@ -204,23 +204,66 @@ asia-northeast3-docker.pkg.dev/senior-mhealth-lee/backend/ai-service:v1
 
 ## 🚀 실습: Cloud Run 서비스 배포
 
+### Docker Desktop 설치 가이드 👤
+
+#### Windows 설치 방법
+1. **Docker Desktop for Windows 다운로드**
+   - https://www.docker.com/products/docker-desktop/ 접속
+   - "Download for Windows" 클릭
+   - 설치 파일 실행 (약 500MB)
+
+2. **설치 과정**
+   - WSL 2 백엔드 사용 체크 ✅
+   - 설치 완료 후 재부팅 필요
+
+3. **설치 확인**
+   ```powershell
+   # PowerShell에서 실행
+   docker --version
+   docker run hello-world
+   ```
+
+#### Mac 설치 방법
+1. **Docker Desktop for Mac 다운로드**
+   - https://www.docker.com/products/docker-desktop/ 접속
+   - "Download for Mac" 클릭
+   - Intel 칩 또는 Apple Silicon (M1/M2) 선택
+
+2. **설치 과정**
+   - 다운로드한 Docker.dmg 실행
+   - Docker 아이콘을 Applications로 드래그
+   - Applications에서 Docker 실행
+
+3. **설치 확인**
+   ```bash
+   # Terminal에서 실행
+   docker --version
+   docker run hello-world
+   ```
+
+#### 공통 설정
+- Docker Desktop 실행 후 우측 상단 고래 아이콘 확인 🐳
+- Settings → Resources에서 메모리/CPU 할당 조정 가능
+- 권장 설정: Memory 4GB, CPU 2 cores 이상
+
 ### 사전 준비 확인 🤖
 
 ```bash
-# 1. 현재 프로젝트 확인
+# 1. Docker 설치 확인
+docker --version
+# 출력 예: Docker version 24.0.7, build afdd53b
+
+# 2. 현재 프로젝트 확인
 gcloud config get-value project
 # 출력: senior-mhealth-lee
 
-# 2. 필요한 API 활성화
+# 3. 필요한 API 활성화
 gcloud services enable run.googleapis.com
 gcloud services enable containerregistry.googleapis.com
 gcloud services enable cloudbuild.googleapis.com
 
-# 3. 서비스 계정 키 확인
+# 4. 서비스 계정 키 확인
 ls serviceAccountKey.json
-
-# 4. Docker 설치 확인 (선택사항)
-docker --version
 ```
 
 ---
