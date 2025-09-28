@@ -2,17 +2,7 @@
 
 Gemini API 기반 정신건강 텍스트 분석 서비스 (간소화 버전)
 
-## 주요 변경사항
-
-### 제거된 기능
-- ❌ SincNet 음성 분석
-- ❌ Librosa 음향 특징 추출
-- ❌ RAG (Retrieval-Augmented Generation)
-- ❌ LangChain 체이닝
-- ❌ 화자 분리 (Speaker Diarization)
-- ❌ 복잡한 파이프라인
-
-### 유지된 기능
+## 주요 기능능
 - ✅ Gemini API 텍스트 분석
 - ✅ 정신건강 지표 평가 (우울도, 불안도, 인지기능)
 - ✅ 간단한 REST API

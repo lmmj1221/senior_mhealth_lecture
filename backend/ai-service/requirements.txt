@@ -1,5 +1,5 @@
-# Senior MHealth AI Service - Simplified Dependencies
-# Text analysis only using Gemini API
+# Senior MHealth AI Service - Dependencies
+# Text analysis using Gemini API + Speech-to-Text
 
 # Core dependencies
 google-cloud-aiplatform>=1.38.0  # Vertex AI SDK for Gemini API
@@ -11,6 +11,7 @@ python-dotenv>=1.0.0
 # Cloud integration
 google-cloud-storage>=2.10.0
 google-cloud-firestore>=2.11.0
+google-cloud-speech>=2.21.0  # Speech-to-Text API
 
 # Utilities
 httpx>=0.25.0
