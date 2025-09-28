@@ -225,7 +225,7 @@ docker --version
 
 ---
 
-## Step 1: AI Service 컨테이너화 및 배포
+## Step 1: AI Service 컨테이너화 및 배포 (Docker 빌드)
 
 ### 1.1 Vertex AI 설정 👤
 
@@ -303,7 +303,9 @@ docker run -p 8081:8081 --env-file .env ai-service-local
 curl http://localhost:8081/health
 ```
 
-### 1.5 Registry에 이미지 푸시 🤖
+### 1.5 Docker로 이미지 빌드 및 푸시 🤖
+
+> ⚠️ **중요**: AI Service는 Docker를 사용하여 로컬에서 빌드하고 Registry에 푸시합니다.
 
 #### 옵션 A: Artifact Registry 사용 (권장) 🆕
 
@@ -399,7 +401,7 @@ curl -X POST ${AI_SERVICE_URL}/analyze \
 
 ---
 
-## Step 2: API Service 컨테이너화 및 배포
+## Step 2: API Service 컨테이너화 및 배포 (Cloud Build)
 
 ### 2.1 API Service 환경 설정 🤖
 
@@ -449,24 +451,88 @@ CMD ["node", "server.js"]
 EOF
 ```
 
-### 2.3 GCR에 이미지 푸시 🤖
+### 2.3 Cloud Build를 사용한 이미지 빌드 및 푸시 🤖
+
+> ⚠️ **중요**: API Service는 Google Cloud Build를 사용하여 클라우드에서 빌드합니다.
+> Docker 설치 없이도 빌드가 가능하며, 더 안전하고 빠릅니다.
+
+#### Cloud Build 설정 파일 생성
 
 ```bash
-# 옵션 A: Artifact Registry (권장)
-docker build -t asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend/api-service:v1 .
-docker push asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend/api-service:v1
+# cloudbuild.yaml 파일 생성
+cat > cloudbuild.yaml << 'EOF'
+# Cloud Build 설정
+steps:
+  # 1단계: Docker 이미지 빌드
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'asia-northeast3-docker.pkg.dev/$PROJECT_ID/backend/api-service:$SHORT_SHA'
+      - '-t'
+      - 'asia-northeast3-docker.pkg.dev/$PROJECT_ID/backend/api-service:latest'
+      - '.'
 
-# 옵션 B: GCR (레거시)
-# docker build -t gcr.io/${PROJECT_ID}/senior-mhealth-api:v1 .
-# docker push gcr.io/${PROJECT_ID}/senior-mhealth-api:v1
+  # 2단계: 이미지를 Artifact Registry에 푸시
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'asia-northeast3-docker.pkg.dev/$PROJECT_ID/backend/api-service:$SHORT_SHA'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'asia-northeast3-docker.pkg.dev/$PROJECT_ID/backend/api-service:latest'
+
+# 빌드된 이미지 목록
+images:
+  - 'asia-northeast3-docker.pkg.dev/$PROJECT_ID/backend/api-service:$SHORT_SHA'
+  - 'asia-northeast3-docker.pkg.dev/$PROJECT_ID/backend/api-service:latest'
+
+# 빌드 옵션
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: 'N1_HIGHCPU_8'
+EOF
+```
+
+#### Cloud Build 실행
+
+```bash
+# Artifact Registry 저장소 생성 (처음 한 번만)
+gcloud artifacts repositories create backend \
+  --repository-format=docker \
+  --location=asia-northeast3 \
+  --description="Backend services"
+
+# Cloud Build 실행
+gcloud builds submit \
+  --config cloudbuild.yaml \
+  --substitutions SHORT_SHA="v1" \
+  --region asia-northeast3 .
+
+# 빌드 상태 확인
+gcloud builds list --limit 5
+
+# 빌드된 이미지 확인
+gcloud artifacts docker images list \
+  asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend
+```
+
+#### 로컬 Docker 빌드 (선택사항 - 테스트용)
+
+```bash
+# 로컬에서 테스트하고 싶은 경우만 실행
+# docker build -t api-service-local .
+# docker run -p 8080:8080 --env-file .env api-service-local
 ```
 
 ### 2.4 Cloud Run 배포 🤖
 
 ```bash
-# 옵션 A: Artifact Registry 이미지 사용 (권장)
+# Cloud Build로 빌드한 이미지 사용
 gcloud run deploy senior-mhealth-api \
-  --image asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend/api-service:v1 \
+  --image asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend/api-service:latest \
   --platform managed \
   --region asia-northeast3 \
   --memory 1Gi \
@@ -475,9 +541,6 @@ gcloud run deploy senior-mhealth-api \
   --max-instances 10 \
   --allow-unauthenticated \
   --set-env-vars="GOOGLE_CLOUD_PROJECT=${PROJECT_ID},AI_SERVICE_URL=${AI_SERVICE_URL}"
-
-# 옵션 B: GCR 이미지 사용 (레거시)
-# --image gcr.io/${PROJECT_ID}/senior-mhealth-api:v1
 
 # URL 저장
 export API_SERVICE_URL=$(gcloud run services describe senior-mhealth-api \
@@ -579,21 +642,45 @@ gcloud monitoring metrics-descriptors list \
 
 ### 4.3 서비스 업데이트 🤖
 
+#### AI Service 업데이트 (Docker)
+
 ```bash
-# 코드 수정 후 새 버전 배포
-# 옵션 A: Artifact Registry (권장)
+# AI Service - Docker로 빌드 및 배포
+cd backend/ai-service
+
+# 새 버전 빌드 및 푸시
 docker build -t asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend/ai-service:v2 .
 docker push asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend/ai-service:v2
-
-# 옵션 B: GCR (레거시)
-# docker build -t gcr.io/${PROJECT_ID}/senior-mhealth-ai:v2 .
-# docker push gcr.io/${PROJECT_ID}/senior-mhealth-ai:v2
 
 # 새 리비전 배포
 gcloud run deploy senior-mhealth-ai \
   --image asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend/ai-service:v2 \
   --platform managed \
   --region asia-northeast3
+```
+
+#### API Service 업데이트 (Cloud Build)
+
+```bash
+# API Service - Cloud Build로 빌드 및 배포
+cd backend/api-service
+
+# Cloud Build 실행
+gcloud builds submit \
+  --config cloudbuild.yaml \
+  --substitutions SHORT_SHA="v2" \
+  --region asia-northeast3 .
+
+# 새 리비전 배포
+gcloud run deploy senior-mhealth-api \
+  --image asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend/api-service:v2 \
+  --platform managed \
+  --region asia-northeast3
+```
+
+#### 트래픽 분할 (카나리 배포)
+
+```bash
 
 # 트래픽 분할 (카나리 배포)
 gcloud run services update-traffic senior-mhealth-ai \
@@ -603,6 +690,33 @@ gcloud run services update-traffic senior-mhealth-ai \
 ```
 
 ---
+
+## 🆕 빌드 방법 비교
+
+### Docker 빌드 vs Cloud Build
+
+| 특징 | Docker 빌드 | Cloud Build |
+|------|------------|-------------|
+| **사용 서비스** | AI Service | API Service |
+| **빌드 위치** | 로컬 컴퓨터 | Google Cloud |
+| **사전 요구사항** | Docker 설치 필수 | Docker 설치 불필요 |
+| **빌드 속도** | 컴퓨터 성능에 따라 다름 | 클라우드 상에서 빠르게 빌드 |
+| **사용 비용** | 무료 | 120분/일 무료 |
+| **빌드 자동화** | 번거로움 | Git 푸시시 자동 빌드 가능 |
+| **빌드 이력** | 로컬에만 저장 | Cloud Console에서 확인 가능 |
+
+### 선택 기준
+
+**Docker 빌드를 선택하는 경우:**
+- 특수한 환경 설정이 필요한 경우 (AI Service)
+- 빌드 프로세스를 세밀하게 제어해야 하는 경우
+- 로컬 테스트가 중요한 경우
+
+**Cloud Build를 선택하는 경우:**
+- Docker 설치가 어려운 환경
+- CI/CD 파이프라인 구축
+- 팀 협업 프로젝트
+- 빌드 자동화가 필요한 경우
 
 ## 🔧 트러블슈팅
 
@@ -629,6 +743,26 @@ gcloud auth configure-docker
 # 문제: "denied: Project not found"
 # 해결: 프로젝트 확인
 gcloud config set project senior-mhealth-lee
+```
+
+### Cloud Build 관련 문제
+
+#### Cloud Build 실패
+```bash
+# 문제: "cloudbuild.yaml not found"
+# 해결: 현재 디렉토리 확인
+ls cloudbuild.yaml
+pwd
+
+# 문제: "Artifact Registry repository not found"
+# 해결: 저장소 생성
+gcloud artifacts repositories create backend \
+  --repository-format=docker \
+  --location=asia-northeast3
+
+# 문제: "Cloud Build API not enabled"
+# 해결: API 활성화
+gcloud services enable cloudbuild.googleapis.com
 ```
 
 ### Cloud Run 관련 문제
