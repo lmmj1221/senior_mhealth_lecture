@@ -72,7 +72,7 @@ Docker 컨테이너 기술을 이해하고 Google Cloud Run을 사용하여 AI S
                     ↓
 ┌──────────────────────────────────────┐
 │         Docker Registry              │
-│    (Docker Hub, GCR, ECR)           │
+│   (Docker Hub, Artifact Registry)   │
 └──────────────────────────────────────┘
 ```
 
@@ -80,7 +80,7 @@ Docker 컨테이너 기술을 이해하고 Google Cloud Run을 사용하여 AI S
 - **Dockerfile** = 레시피 📝
 - **Docker Image** = 완성된 도시락 세트 🍱
 - **Docker Container** = 먹고 있는 도시락 🥢
-- **Docker Hub/GCR** = 도시락 판매점 🏪
+- **Docker Hub/Artifact Registry** = 도시락 판매점 🏪
 
 ### Dockerfile 구조
 
@@ -147,11 +147,11 @@ CMD ["node", "server.js"]
 
 ### 4. Container Registry → Artifact Registry
 
-### Google Artifact Registry (GCR의 진화 버전)
+### Google Artifact Registry
 
-> ⚠️ **중요 변경사항**: Google Container Registry(GCR)는 2024년부터 Artifact Registry로 대체됩니다.
-> - GCR은 여전히 작동하지만, 신규 프로젝트는 Artifact Registry 사용 권장
-> - Artifact Registry는 Docker 이미지뿐만 아니라 다양한 패키지 지원
+> ℹ️ **참고**: Google Container Registry(GCR)는 Artifact Registry로 대체되었습니다.
+> - 신규 프로젝트는 Artifact Registry 사용 필수
+> - Artifact Registry는 Docker 이미지뿐만 아니라 npm, Maven, Python 등 다양한 패키지 지원
 
 ```
 Artifact Registry 구조:
@@ -162,8 +162,8 @@ asia-northeast3-docker.pkg.dev/senior-mhealth-lee/backend/ai-service:v1
 └────────────┘└──────────────┘└──────────────┘└──────┘└────────┘└─┘
     리전        도메인            프로젝트 ID      저장소    이미지    태그
 
-기존 GCR (여전히 작동):
-gcr.io/senior-mhealth-lee/ai-service:v1
+예시:
+asia-northeast3-docker.pkg.dev/senior-mhealth-lee/backend/ai-service:v1
 ```
 
 **💡 클라우드 창고로 이해하기:**
@@ -307,7 +307,7 @@ curl http://localhost:8081/health
 
 > ⚠️ **중요**: AI Service는 Docker를 사용하여 로컬에서 빌드하고 Registry에 푸시합니다.
 
-#### 옵션 A: Artifact Registry 사용 (권장) 🆕
+#### Artifact Registry 사용 
 
 ```bash
 # Artifact Registry 저장소 생성 (처음 한 번만)
@@ -333,22 +333,6 @@ gcloud artifacts docker images list \
   asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend
 ```
 
-#### 옵션 B: Container Registry 사용 (레거시)
-
-```bash
-# Container Registry 인증
-gcloud auth configure-docker
-
-# 이미지 빌드 (GCR 태그)
-docker build -t gcr.io/${PROJECT_ID}/senior-mhealth-ai:v1 .
-
-# 이미지 푸시
-docker push gcr.io/${PROJECT_ID}/senior-mhealth-ai:v1
-
-# 푸시 확인
-gcloud container images list --repository=gcr.io/${PROJECT_ID}
-```
-
 ### 1.6 Cloud Run 배포 🤖
 
 ```bash
@@ -364,9 +348,6 @@ gcloud run deploy senior-mhealth-ai \
   --allow-unauthenticated \
   --service-account=automation-sa@${PROJECT_ID}.iam.gserviceaccount.com \
   --set-env-vars="GOOGLE_CLOUD_PROJECT=${PROJECT_ID},VERTEX_AI_LOCATION=asia-northeast3,MODEL_NAME=gemini-pro,ENVIRONMENT=production"
-
-# 옵션 B: GCR 이미지 사용 (레거시)
-# --image gcr.io/${PROJECT_ID}/senior-mhealth-ai:v1
 
 # 배포 성공 시 URL 저장
 export AI_SERVICE_URL=$(gcloud run services describe senior-mhealth-ai \
