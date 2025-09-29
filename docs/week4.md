@@ -77,10 +77,13 @@ Docker 컨테이너 기술을 이해하고 Google Cloud Run을 사용하여 AI S
 ```
 
 **💡 도시락 비유로 이해하기:**
-- **Dockerfile** = 레시피 📝
-- **Docker Image** = 완성된 도시락 세트 
-- **Docker Container** = 먹고 있는 도시락 : 이 비유가 맞나? 이상하다. 
-- **Docker Hub/Artifact Registry** = 도시락 판매점 
+  - Dockerfile: 도시락 만드는 레시피 (설계도)
+  - Docker Image: 포장된 도시락 세트 (실행 준비 완료      
+  상태)
+  - Docker Container: 실제로 펼쳐놓고 사용 중인 도시락    
+   (실행 중인 인스턴스)
+  - Registry: 도시락 보관 창고 (이미지 저장소)
+
 
 ### Dockerfile 구조
 
@@ -177,30 +180,6 @@ asia-northeast3-docker.pkg.dev/senior-mhealth-lee/backend/ai-service:v1
 - 취약점 스캔 강화
 - npm, Maven, Python 패키지도 저장 가능
 
-### 이미지 태깅 전략
-
-```
-# 환경별 태깅
-:latest     # 최신 버전 (개발)
-:staging    # 스테이징 환경
-:prod       # 프로덕션 환경
-
-# 버전 태깅
-:v1.0.0     # 시맨틱 버저닝
-:v1.0.1
-:v2.0.0
-
-# 커밋 해시 태깅
-:abc123     # Git 커밋 해시
-```
-
-**💡 베스트 프랙티스:**
-- ✅ 명확한 버전 사용: `v1.2.3`
-- ✅ 환경 구분: `prod-v1.2.3`
-- ❌ latest만 사용 (프로덕션에 위험)
-- ❌ 의미없는 이름: `final`, `test`
-
----
 
 ## 🚀 실습: Cloud Run 서비스 배포
 
@@ -208,72 +187,58 @@ asia-northeast3-docker.pkg.dev/senior-mhealth-lee/backend/ai-service:v1
 
 #### Windows 설치 방법
 
-##### WSL 2 사전 설치 (필수)
-1. **WSL 2 활성화**
-   ```powershell
-   # PowerShell을 관리자 권한으로 실행
+##### Docker Desktop 간편 설치 (2024년 최신)
 
-   # WSL 기능 활성화
-   dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
+> 💡 **좋은 소식!** 최신 Docker Desktop은 WSL 2를 **자동으로 설치**합니다!
+> - 설치 중 WSL 2가 없으면 자동으로 활성화 및 설치
+> - 복잡한 수동 설정 불필요
+> - Docker Desktop이 모든 설정을 자동으로 처리
 
-   # Virtual Machine 기능 활성화
-   dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
-
-   # 컴퓨터 재시작 필요
-   ```
-
-2. **WSL 2 설치 및 설정**
-   ```powershell
-   # 재시작 후 PowerShell 관리자 권한으로 실행
-
-   # WSL 2 Linux 커널 업데이트
-   wsl --update
-
-   # WSL 2를 기본 버전으로 설정
-   wsl --set-default-version 2
-
-   # Ubuntu 설치 (Microsoft Store에서도 가능)
-   wsl --install -d Ubuntu
-
-   # 설치 확인
-   wsl --list --verbose
-   ```
-
-3. **시스템 요구사항 확인**
-   - Windows 10 버전 1903 이상 (빌드 18362 이상)
-   - Windows 11 모든 버전
-   - 64비트 시스템
-   - 4GB 이상 RAM
-
-##### Docker Desktop 설치
 1. **Docker Desktop for Windows 다운로드**
    - https://www.docker.com/products/docker-desktop/ 접속
    - "Download for Windows" 클릭
    - 설치 파일 실행 (약 500MB)
 
 2. **설치 과정**
-   - "Use WSL 2 instead of Hyper-V" 옵션 체크 ✅
+   - 설치 프로그램 실행
+   - "Use WSL 2 instead of Hyper-V" 옵션이 기본으로 선택됨 ✅
+   - WSL 2가 없으면 자동으로 설치 제안
    - 설치 완료 후 재부팅 필요
 
-3. **설치 확인**
+3. **시스템 요구사항**
+   - Windows 10 버전 22H2 이상 (빌드 19045 이상)
+   - Windows 11 모든 버전
+   - 64비트 시스템
+   - 4GB 이상 RAM
+
+4. **설치 확인**
    ```powershell
    # PowerShell에서 실행
    docker --version
    docker run hello-world
 
-   # WSL 통합 확인
+   # WSL 통합 확인 (자동 설치됨)
    wsl -l -v
    # Ubuntu와 docker-desktop이 표시되어야 함
    ```
 
-4. **문제 해결**
-   ```powershell
-   # "WSL 2 installation is incomplete" 오류 시
-   # https://aka.ms/wsl2kernel 에서 커널 업데이트 다운로드
+5. **문제 해결 (필요한 경우만)**
 
-   # Docker Desktop이 시작되지 않을 때
-   # Settings → General → Use the WSL 2 based engine 체크
+   **수동 WSL 2 설치가 필요한 경우:**
+   ```powershell
+   # PowerShell 관리자 권한으로 실행
+
+   # WSL 설치 (최신 명령어)
+   wsl --install
+
+   # 재부팅 후 확인
+   wsl --status
    ```
+
+   **Docker Desktop 시작 오류 시:**
+   - Settings → General → "Use the WSL 2 based engine" 체크 확인
+   - Windows 업데이트 확인
+   - 가상화 기능 BIOS에서 활성화 확인
 
 #### Mac 설치 방법
 1. **Docker Desktop for Mac 다운로드**
@@ -304,9 +269,10 @@ asia-northeast3-docker.pkg.dev/senior-mhealth-lee/backend/ai-service:v1
 Docker Desktop을 설치해주세요.
 
 Windows 사용자:
-1. WSL 2를 먼저 설치해주세요
-2. Docker Desktop for Windows를 다운로드하고 설치해주세요
-3. docker --version으로 확인해주세요
+1. Docker Desktop for Windows를 다운로드하고 설치해주세요
+2. WSL 2는 자동으로 설치됩니다
+3. 설치 후 재부팅해주세요
+4. docker --version으로 확인해주세요
 
 Mac 사용자:
 1. Docker Desktop for Mac을 다운로드해주세요
@@ -339,7 +305,7 @@ ls serviceAccountKey.json
 ```
 Google Cloud에서 Cloud Run과 Docker를 위한 환경을 설정해주세요.
 
-1. 현재 프로젝트를 ? 로 설정해주세요
+1. 현재 프로젝트를 본인 프로젝트 Id 로 설정해주세요
 2. Cloud Run, Container Registry, Cloud Build API를 활성화해주세요
 3. serviceAccountKey.json 파일이 있는지 확인해주세요
 ```
@@ -348,22 +314,50 @@ Google Cloud에서 Cloud Run과 Docker를 위한 환경을 설정해주세요.
 
 ## Step 1: AI Service 컨테이너화 및 배포 (Docker 빌드)
 
-### 1.1 Vertex AI 설정 👤
+### 1.1 Google AI Studio에서 Gemini API 키 발급 👤
 
-1. [Vertex AI Console](https://console.cloud.google.com/vertex-ai) 접속
-2. API 활성화 확인
-3. 프로젝트 선택: senior-mhealth-lee
-4. 서비스 계정 권한 확인
+> ⚠️ **중요**: AI Service가 구동되기 위해서는 Google AI Studio에서 Gemini API 키를 발급받아야 합니다.
 
-### 🤖 Vibe 코딩 프롬프트 - Vertex AI 설정
+#### Google AI Studio API 키 발급 과정
+
+1. **Google AI Studio 접속**
+   - https://aistudio.google.com/ 접속
+   - Google 계정으로 로그인
+
+2. **기존 프로젝트 선택**
+   - 좌측 상단의 프로젝트 선택 드롭다운 클릭
+   - 이미 생성한 GCP 프로젝트 선택 (예: `senior-mhealth-lee`)
+   - 새 프로젝트가 아닌 **기존 프로젝트를 반드시 선택**해야 함
+
+3. **API 키 생성**
+   - 좌측 메뉴에서 "Get API key" 클릭
+   - "Create API key" 버튼 클릭
+   - "Create API key in existing project" 선택
+   - 본인의 GCP 프로젝트 선택 (예: `senior-mhealth-lee`)
+   - API 키가 생성되면 복사하여 안전한 곳에 저장
+
+4. **API 키 확인**
+   ```
+   예시 API 키 형식:
+   AIzaSyBxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+   ```
+
+> 💡 **주의사항**: 
+> - API 키는 외부에 노출되지 않도록 주의
+> - 반드시 기존 GCP 프로젝트와 연결하여 생성
+> - API 키는 한 번만 표시되므로 즉시 복사하여 저장
+
+### 🤖 Vibe 코딩 프롬프트 - Google AI Studio API 키 발급
 
 ```
-Google Cloud에서 Vertex AI를 설정해주세요.
+Google AI Studio에서 Gemini API 키를 발급받아주세요.
 
-1. Vertex AI Console에 접속해주세요
-2. Vertex AI API가 활성화되어 있는지 확인해주세요
-3. 필요하면 API를 활성화해주세요: gcloud services enable aiplatform.googleapis.com
-4. 서비스 계정에 Vertex AI User 권한이 있는지 확인해주세요
+1. https://aistudio.google.com/ 에 접속해주세요
+2. Google 계정으로 로그인해주세요
+3. 기존 GCP 프로젝트를 선택해주세요 (새 프로젝트 생성 X)
+4. "Get API key" → "Create API key" → "Create API key in existing project" 선택
+5. 본인의 GCP 프로젝트를 선택해주세요
+6. 생성된 API 키를 복사하여 안전하게 저장해주세요
 ```
 
 ### 1.2 AI Service 환경 설정 🤖
@@ -372,18 +366,34 @@ Google Cloud에서 Vertex AI를 설정해주세요.
 # backend/ai-service로 이동
 cd backend/ai-service
 
-# Vertex AI API 활성화
-gcloud services enable aiplatform.googleapis.com
+# 필요한 API 활성화
+gcloud services enable generativelanguage.googleapis.com
+gcloud services enable secretmanager.googleapis.com
+gcloud services enable speech.googleapis.com
 
-# 환경 변수 파일 생성
+# 환경 변수 파일 생성 (Google AI Studio API 키 사용)
 cat > .env << EOF
+# Google AI Studio API 키 (1.1에서 발급받은 키)
+GOOGLE_AI_API_KEY=YOUR_GEMINI_API_KEY_HERE
+
+# 프로젝트 설정
 GOOGLE_CLOUD_PROJECT=senior-mhealth-lee
-VERTEX_AI_LOCATION=asia-northeast3
-MODEL_NAME=gemini-pro
+GCP_PROJECT_ID=senior-mhealth-lee
+
+# 모델 설정 (Gemini 2.0 사용 가능)
+MODEL_NAME=gemini-2.0-flash-exp
 ENVIRONMENT=production
 PORT=8081
+
+# 로깅 설정
+LOG_LEVEL=INFO
 EOF
+
+# .env 파일 편집하여 실제 API 키 입력
+echo "⚠️  .env 파일을 편집하여 YOUR_GEMINI_API_KEY_HERE를 실제 API 키로 교체하세요"
 ```
+
+> 🔑 **중요**: `YOUR_GEMINI_API_KEY_HERE` 부분을 1.1단계에서 발급받은 실제 API 키로 교체해야 합니다.
 
 ### 🤖 Vibe 코딩 프롬프트 - AI Service 설정
 
@@ -391,13 +401,17 @@ EOF
 AI Service를 위한 환경을 설정해주세요.
 
 1. backend/ai-service 폴더로 이동해주세요
-2. Vertex AI API를 활성화해주세요
+2. 필요한 API들을 활성화해주세요:
+   - Generative Language API: gcloud services enable generativelanguage.googleapis.com
+   - Secret Manager API: gcloud services enable secretmanager.googleapis.com
+   - Speech-to-Text API: gcloud services enable speech.googleapis.com
 3. .env 파일을 만들고 다음 설정을 추가해주세요:
+   - GOOGLE_AI_API_KEY=발급받은_실제_API_키
    - GOOGLE_CLOUD_PROJECT=senior-mhealth-lee
-   - VERTEX_AI_LOCATION=asia-northeast3
-   - MODEL_NAME=gemini-pro
+   - MODEL_NAME=gemini-2.0-flash-exp
    - ENVIRONMENT=production
    - PORT=8081
+4. .env 파일에서 YOUR_GEMINI_API_KEY_HERE를 실제 API 키로 교체해주세요
 ```
 
 ### 1.3 Dockerfile 생성 🤖
@@ -493,8 +507,14 @@ AI Service Docker 이미지를 빌드하고 Artifact Registry에 푸시해주세
 
 ### 1.6 Cloud Run 배포 🤖
 
+> ⚠️ **중요**: 배포 시 Google AI Studio에서 발급받은 API 키를 환경변수로 설정해야 합니다.
+
 ```bash
-# 옵션 A: Artifact Registry 이미지 사용 (권장)
+# 환경변수 설정 (실제 API 키로 교체 필요)
+export GOOGLE_AI_API_KEY="YOUR_ACTUAL_API_KEY_HERE"
+export PROJECT_ID=$(gcloud config get-value project)
+
+# Cloud Run 배포 (Google AI Studio API 키 포함)
 gcloud run deploy senior-mhealth-ai \
   --image asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend/ai-service:v1 \
   --platform managed \
@@ -505,7 +525,7 @@ gcloud run deploy senior-mhealth-ai \
   --max-instances 5 \
   --allow-unauthenticated \
   --service-account=automation-sa@${PROJECT_ID}.iam.gserviceaccount.com \
-  --set-env-vars="GOOGLE_CLOUD_PROJECT=${PROJECT_ID},VERTEX_AI_LOCATION=asia-northeast3,MODEL_NAME=gemini-pro,ENVIRONMENT=production"
+  --set-env-vars="GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY},GOOGLE_CLOUD_PROJECT=${PROJECT_ID},MODEL_NAME=gemini-2.0-flash-exp,ENVIRONMENT=production,LOG_LEVEL=INFO"
 
 # 배포 성공 시 URL 저장
 export AI_SERVICE_URL=$(gcloud run services describe senior-mhealth-ai \
@@ -516,18 +536,34 @@ export AI_SERVICE_URL=$(gcloud run services describe senior-mhealth-ai \
 echo "AI Service URL: $AI_SERVICE_URL"
 ```
 
+> 🔑 **API 키 보안 주의사항**:
+> - `YOUR_ACTUAL_API_KEY_HERE`를 실제 발급받은 API 키로 교체
+> - API 키는 터미널 히스토리에 남지 않도록 주의
+> - 프로덕션 환경에서는 Secret Manager 사용 권장
+
 ### 🤖 Vibe 코딩 프롬프트 - AI Service Cloud Run 배포
 
 ```
 AI Service를 Cloud Run에 배포해주세요.
 
-1. 서비스 이름: senior-mhealth-ai
-2. 리전: asia-northeast3
-3. 메모리: 2Gi, CPU: 2
-4. 타임아웃: 300초, 최대 인스턴스: 5
-5. 인증 없이 접근 가능하도록 설정
-6. 서비스 계정과 환경 변수들을 설정해주세요
-7. 배포된 서비스 URL을 확인해주세요
+1. 먼저 환경변수를 설정해주세요:
+   - export GOOGLE_AI_API_KEY="발급받은_실제_API_키"
+   - export PROJECT_ID=$(gcloud config get-value project)
+
+2. Cloud Run 배포 설정:
+   - 서비스 이름: senior-mhealth-ai
+   - 리전: asia-northeast3
+   - 메모리: 2Gi, CPU: 2
+   - 타임아웃: 300초, 최대 인스턴스: 5
+   - 인증 없이 접근 가능하도록 설정
+
+3. 환경 변수 설정:
+   - GOOGLE_AI_API_KEY (발급받은 API 키)
+   - GOOGLE_CLOUD_PROJECT (프로젝트 ID)
+   - MODEL_NAME=gemini-2.0-flash-exp
+   - ENVIRONMENT=production
+
+4. 배포된 서비스 URL을 확인해주세요
 ```
 
 ### 1.7 서비스 검증 🤖
@@ -862,15 +898,20 @@ gcloud monitoring metrics-descriptors list \
 # AI Service - Docker로 빌드 및 배포
 cd backend/ai-service
 
+# 환경변수 재설정 (API 키 포함)
+export GOOGLE_AI_API_KEY="YOUR_ACTUAL_API_KEY_HERE"
+export PROJECT_ID=$(gcloud config get-value project)
+
 # 새 버전 빌드 및 푸시
 docker build -t asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend/ai-service:v2 .
 docker push asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend/ai-service:v2
 
-# 새 리비전 배포
+# 새 리비전 배포 (API 키 환경변수 포함)
 gcloud run deploy senior-mhealth-ai \
   --image asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend/ai-service:v2 \
   --platform managed \
-  --region asia-northeast3
+  --region asia-northeast3 \
+  --set-env-vars="GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY},GOOGLE_CLOUD_PROJECT=${PROJECT_ID},MODEL_NAME=gemini-2.0-flash-exp,ENVIRONMENT=production,LOG_LEVEL=INFO"
 ```
 
 ### 🤖 Vibe 코딩 프롬프트 - AI Service 업데이트
@@ -879,9 +920,12 @@ gcloud run deploy senior-mhealth-ai \
 AI Service를 새 버전으로 업데이트해주세요.
 
 1. backend/ai-service 폴더로 이동해주세요
-2. Docker로 새 버전(v2) 이미지를 빌드해주세요
-3. 빌드한 이미지를 Registry에 푸시해주세요
-4. Cloud Run에 새 리비전을 배포해주세요
+2. 환경변수를 재설정해주세요:
+   - export GOOGLE_AI_API_KEY="발급받은_실제_API_키"
+   - export PROJECT_ID=$(gcloud config get-value project)
+3. Docker로 새 버전(v2) 이미지를 빌드해주세요
+4. 빌드한 이미지를 Registry에 푸시해주세요
+5. Cloud Run에 새 리비전을 배포할 때 API 키 환경변수를 포함해주세요
 ```
 
 #### API Service 업데이트 (Cloud Build)
@@ -965,146 +1009,7 @@ gcloud run services update-traffic senior-mhealth-ai \
 - 팀 협업 프로젝트
 - 빌드 자동화가 필요한 경우
 
-## 🔧 트러블슈팅
 
-### Docker 관련 문제
-
-#### 빌드 실패
-```bash
-# 문제: "Cannot connect to Docker daemon"
-# 해결: Docker Desktop 실행 확인
-docker ps
-
-# 문제: "no space left on device"
-# 해결: Docker 이미지 정리
-docker system prune -a
-```
-
-#### 푸시 실패
-```bash
-# 문제: "denied: Token exchange failed"
-# 해결: 재인증
-gcloud auth login
-gcloud auth configure-docker
-
-# 문제: "denied: Project not found"
-# 해결: 프로젝트 확인
-gcloud config set project senior-mhealth-lee
-```
-
-### Cloud Build 관련 문제
-
-#### Cloud Build 실패
-```bash
-# 문제: "cloudbuild.yaml not found"
-# 해결: 현재 디렉토리 확인
-ls cloudbuild.yaml
-pwd
-
-# 문제: "Artifact Registry repository not found"
-# 해결: 저장소 생성
-gcloud artifacts repositories create backend \
-  --repository-format=docker \
-  --location=asia-northeast3
-
-# 문제: "Cloud Build API not enabled"
-# 해결: API 활성화
-gcloud services enable cloudbuild.googleapis.com
-```
-
-### Cloud Run 관련 문제
-
-#### 배포 실패
-```bash
-# 문제: "Quota exceeded"
-# 해결: 할당량 확인
-gcloud compute project-info describe --project=${PROJECT_ID}
-
-# 문제: "Container failed to start"
-# 해결: 로그 확인
-gcloud logging read "resource.type=cloud_run_revision" --limit 50
-```
-
-#### 성능 문제
-```bash
-# 콜드 스타트 개선
-gcloud run services update senior-mhealth-api \
-  --min-instances=1 \
-  --platform managed \
-  --region asia-northeast3
-
-# 메모리 부족 해결
-gcloud run services update senior-mhealth-ai \
-  --memory=4Gi \
-  --platform managed \
-  --region asia-northeast3
-```
-
----
-
-## 💰 비용 최적화
-
-### Cloud Run 무료 티어
-- 월 200만 요청 무료
-- 월 360,000 GB-초 메모리 무료
-- 월 180,000 vCPU-초 무료
-
-### 비용 절감 전략
-
-```bash
-# 1. 최소 인스턴스 0으로 설정 (기본값)
-gcloud run services update senior-mhealth-api \
-  --min-instances=0 \
-  --platform managed \
-  --region asia-northeast3
-
-# 2. 동시 요청 수 최적화
-gcloud run services update senior-mhealth-api \
-  --concurrency=100 \
-  --platform managed \
-  --region asia-northeast3
-
-# 3. CPU 할당 최적화 (요청 처리 중에만)
-gcloud run services update senior-mhealth-api \
-  --cpu-throttling \
-  --platform managed \
-  --region asia-northeast3
-```
-
-### 비용 모니터링 👤
-
-1. [Billing Console](https://console.cloud.google.com/billing) 접속
-2. Budget & alerts 설정
-3. Cost breakdown by service 확인
-
----
-
-## ✅ 완료 체크리스트
-
-- [ ] Docker 기본 개념 이해
-- [ ] Vertex AI 설정 및 권한 확인
-- [ ] AI Service Docker 이미지 빌드
-- [ ] AI Service Cloud Run 배포
-- [ ] API Service Docker 이미지 빌드
-- [ ] API Service Cloud Run 배포
-- [ ] 서비스 간 통신 테스트
-- [ ] 환경 변수 파일 업데이트
-- [ ] 모니터링 설정 확인
-- [ ] 비용 최적화 적용
-
----
-
-## 🎯 학습 성과
-
-이번 주차를 완료하면:
-- ✅ Docker 컨테이너 기술 이해
-- ✅ Dockerfile 작성 능력
-- ✅ Cloud Run 서버리스 배포
-- ✅ Container Registry 활용
-- ✅ 마이크로서비스 아키텍처 구현
-- ✅ 클라우드 네이티브 배포 전략
-
----
 
 ## 🔍 핵심 개념 정리: AI Service vs API Service
 
@@ -1221,7 +1126,7 @@ gcloud run services update senior-mhealth-api \
   - API Service: 메모리 1Gi, CPU 1 (가벼운 비즈니스 로직)
 - **독립적 업데이트**: 한 서비스 업데이트 시 다른 서비스 영향 없음
 
-### 📝 학생들이 자주 하는 실수
+### 📝 자주 하는 실수
 
 1. **❌ 잘못된 접근**: Frontend에서 AI Service 직접 호출
    **✅ 올바른 접근**: Frontend → API Service → AI Service
@@ -1236,19 +1141,153 @@ gcloud run services update senior-mhealth-api \
 
 ---
 
-## 📚 다음 주차 예고
+## 🎯 추가 기능: 화자 분리(Speaker Diarization)
 
-**Week 5: Cloud Functions & Firestore**
-- Cloud Functions 개발
-- Firestore 데이터베이스 설계
-- 실시간 데이터 동기화
-- Cloud Run과 Functions 통합
+이 프로젝트는 Google Cloud Speech API의 화자 분리 기능을 통합하여 시니어와 보호자의 대화를 자동으로 구분하고, 시니어의 발화만을 선택적으로 분석할 수 있습니다.
+
+### 핵심 기능
+- **Google Cloud Speech API 네이티브 화자 분리**: 2-3명의 화자 자동 구분
+- **시니어/보호자 구분 알고리즘**: 한국어 특성 기반 화자 식별
+- **선택적 분석**: 시니어 발화만 추출하여 정확한 정신건강 분석
+- **Gemini 2.0 모델 통합**: 최신 AI 모델로 분석 품질 향상
+
+### 상세 구현 문서
+화자 분리 기능의 전체 구현 내용은 별도 문서를 참조하세요:
+- 📄 [Week 4 추가: 화자 분리(Speaker Diarization) 기능 구현](week4-speaker-diarization.md)
+
+### 배포된 서비스
+- **URL**: https://ai-service-speaker-716250412647.asia-northeast3.run.app
+- **기능**: 화자 분리 + 시니어 텍스트 추출 + Gemini 2.0 분석
+- **보안**: Secret Manager를 통한 API 키 관리 (줄바꿈 없이 저장)
 
 ---
 
-## 🔗 참고 자료
+## 🔑 Google AI Studio API 키 관리 가이드
 
-- [Docker 공식 문서](https://docs.docker.com/)
-- [Cloud Run 공식 문서](https://cloud.google.com/run/docs)
-- [Container Registry 가이드](https://cloud.google.com/container-registry/docs)
-- [Vertex AI 문서](https://cloud.google.com/vertex-ai/docs)
+### API 키 보안 모범 사례
+
+#### 1. 로컬 개발 환경
+```bash
+# .env 파일 사용 (Git에 커밋하지 않음)
+echo "GOOGLE_AI_API_KEY=your-api-key" >> .env
+echo ".env" >> .gitignore
+```
+
+#### 2. Cloud Run 배포 환경
+```bash
+# 환경변수로 직접 설정
+export GOOGLE_AI_API_KEY="your-api-key"
+gcloud run deploy ... --set-env-vars="GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY}"
+```
+
+#### 3. 프로덕션 환경 (권장) - Secret Manager 사용
+
+> ⚠️ **중요**: Secret Manager에 API 키 저장 시 줄바꿈(new line) 금지!
+
+```bash
+# 1단계: API 키 길이 확인 (Gemini API 키는 보통 39자)
+echo -n "YOUR_API_KEY_HERE" | wc -c
+# 예상 출력: 39 (AIzaSy로 시작하는 39자리)
+
+# 2단계: API 키에 줄바꿈이 없는지 확인
+echo -n "YOUR_API_KEY_HERE" | od -c
+# 줄바꿈(\n)이나 캐리지 리턴(\r)이 없어야 함
+
+# 3단계: Secret Manager에 저장 (줄바꿈 없이)
+echo -n "YOUR_API_KEY_HERE" | gcloud secrets create gemini-api-key --data-file=-
+
+# 4단계: 저장된 값 확인
+gcloud secrets versions access latest --secret="gemini-api-key" | wc -c
+# 원본 API 키와 동일한 길이여야 함 (39자)
+
+# 5단계: Cloud Run에서 Secret Manager 연결
+gcloud run deploy senior-mhealth-ai \
+  --image asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend/ai-service:v1 \
+  --platform managed \
+  --region asia-northeast3 \
+  --memory 2Gi \
+  --cpu 2 \
+  --timeout 300 \
+  --max-instances 5 \
+  --allow-unauthenticated \
+  --service-account=automation-sa@${PROJECT_ID}.iam.gserviceaccount.com \
+  --set-secrets="GOOGLE_AI_API_KEY=gemini-api-key:latest"
+```
+
+**🔍 Secret Manager 검증 체크리스트:**
+- ✅ API 키 길이: 39자 (AIzaSy로 시작)
+- ✅ 줄바꿈 없음: `echo -n` 사용 필수
+- ✅ 저장 후 길이 재확인
+- ✅ 특수문자나 공백 없음
+
+### API 키 문제 해결
+
+#### 자주 발생하는 오류
+
+1. **"API key not found" 오류**
+   - Google AI Studio에서 API 키가 올바르게 생성되었는지 확인
+   - 환경변수 이름이 `GOOGLE_AI_API_KEY`인지 확인
+
+2. **"Project not found" 오류**
+   - API 키가 올바른 GCP 프로젝트와 연결되었는지 확인
+   - Google AI Studio에서 기존 프로젝트를 선택했는지 확인
+
+3. **"Quota exceeded" 오류**
+   - Google AI Studio에서 사용량 한도 확인
+   - 필요시 결제 계정 연결
+
+4. **Secret Manager 관련 오류**
+   - **"Secret Manager API not enabled"**: `gcloud services enable secretmanager.googleapis.com`
+   - **"Invalid API key format"**: API 키 길이가 39자가 아니거나 줄바꿈 포함
+   - **"Permission denied"**: 서비스 계정에 Secret Manager 권한 부족
+   
+   ```bash
+   # Secret Manager 권한 추가
+   gcloud projects add-iam-policy-binding ${PROJECT_ID} \
+     --member="serviceAccount:automation-sa@${PROJECT_ID}.iam.gserviceaccount.com" \
+     --role="roles/secretmanager.secretAccessor"
+   ```
+
+5. **API 키 길이 불일치 오류**
+   ```bash
+   # 문제: API 키에 줄바꿈이 포함된 경우
+   echo "AIzaSyBxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+   " | wc -c
+   # 출력: 40 (줄바꿈 포함으로 1자 초과)
+   
+   # 해결: echo -n 사용
+   echo -n "AIzaSyBxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" | wc -c
+   # 출력: 39 (정확한 길이)
+   ```
+
+#### API 키 테스트 방법
+
+```bash
+# 로컬에서 API 키 테스트
+curl -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_AI_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "contents": [{
+      "parts": [{
+        "text": "Hello, how are you?"
+      }]
+    }]
+  }'
+```
+
+### 환경별 설정 요약
+
+| 환경 | API 키 설정 방법 | 보안 수준 | 주의사항 |
+|------|-----------------|-----------|----------|
+| **로컬 개발** | `.env` 파일 | 중간 | `.gitignore`에 추가 필수 |
+| **Cloud Run** | 환경변수 | 중간 | 터미널 히스토리 주의 |
+| **프로덕션** | Secret Manager | 높음 | **줄바꿈 금지**, 길이 확인 필수 |
+
+> 💡 **팁**: 
+> - 개발 단계: 환경변수 방식 사용
+> - 프로덕션: **반드시 Secret Manager 사용**
+> - Secret Manager 사용 시: `echo -n` 명령어로 줄바꿈 방지
+> - API 키 길이: **정확히 39자** (AIzaSy로 시작)
+
+---
+

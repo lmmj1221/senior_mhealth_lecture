@@ -12,11 +12,13 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
-from app.services.vertex_ai_analyzer import (
-    VertexAIAnalyzer,
-    AnalysisRequest,
-    AnalysisResponse
-)
+from app.services.analyzer_factory import get_analyzer
+
+# 환경에 관계없이 동일한 모델 import
+try:
+    from app.services.google_ai_analyzer import AnalysisRequest, AnalysisResponse
+except ImportError:
+    from app.services.vertex_ai_analyzer import AnalysisRequest, AnalysisResponse
 from app.services.speech_to_text import (
     SpeechToTextService,
     AudioRequest,
@@ -53,8 +55,8 @@ async def lifespan(app: FastAPI):
     # 시작 시
     logger.info("AI 서비스 시작 중...")
     try:
-        analyzer = VertexAIAnalyzer()
-        logger.info("Vertex AI Gemini 분석기 초기화 완료")
+        analyzer = get_analyzer()
+        logger.info("AI 분석기 초기화 완료")
         
         stt_service = SpeechToTextService()
         logger.info("Speech-to-Text 서비스 초기화 완료")
@@ -144,23 +146,26 @@ async def detailed_health():
     """상세 헬스체크"""
     global analyzer
 
+    project_id = os.getenv("GCP_PROJECT_ID") or os.getenv("GOOGLE_CLOUD_PROJECT")
+    location = os.getenv("VERTEX_AI_LOCATION") or os.getenv("GCP_LOCATION", "asia-northeast3")
+
     health_status = {
         "status": "healthy",
         "service": "senior-mhealth-ai-simple",
         "version": "2.0.0",
         "components": {
-            "vertex_ai_analyzer": "ready" if analyzer else "not_initialized",
-            "gcp_project": "configured" if os.getenv("GCP_PROJECT_ID") else "missing"
+            "ai_analyzer": "ready" if analyzer else "not_initialized",
+            "gcp_project": "configured" if project_id else "missing"
         },
         "environment": {
-            "project_id": os.getenv("GCP_PROJECT_ID", "not_set"),
-            "region": os.getenv("GCP_REGION", "not_set"),
+            "project_id": project_id or "not_set",
+            "region": location,
             "port": os.getenv("PORT", "8080")
         }
     }
 
     # 전체 상태 결정
-    if not analyzer or not os.getenv("GCP_PROJECT_ID"):
+    if not analyzer or not project_id:
         health_status["status"] = "unhealthy"
 
     return JSONResponse(
@@ -240,7 +245,9 @@ async def analyze_audio(
     file: UploadFile = File(...),
     user_id: str = Form(default="anonymous"),
     session_id: str = Form(default=""),
-    language_code: str = Form(default="ko-KR")
+    language_code: str = Form(default="ko-KR"),
+    enable_speaker_separation: bool = Form(default=True),
+    analyze_senior_only: bool = Form(default=True)
 ):
     """
     음성 파일을 텍스트로 변환한 후 정신건강 분석 수행
@@ -292,15 +299,34 @@ async def analyze_audio(
             )
         
         logger.info(f"음성 인식 완료 - 텍스트: {transcription.transcript[:50]}...")
-        
-        # 2단계: 텍스트 분석
+
+        # Speech API에서 화자 분리가 된 경우 확인
+        text_to_analyze = transcription.transcript
+        speaker_separation_applied = False
+
+        if transcription.senior_transcript and analyze_senior_only:
+            text_to_analyze = transcription.senior_transcript
+            speaker_separation_applied = True
+            logger.info(f"Speech API 화자 분리 완료 - 시니어 텍스트 사용")
+
+        # 2단계: 텍스트 분석 (Speech API에서 이미 분리된 경우 추가 분리 비활성화)
         analysis_request = AnalysisRequest(
-            text=transcription.transcript,
+            text=text_to_analyze,
             user_id=user_id,
-            session_id=session_id
+            session_id=session_id,
+            enable_speaker_separation=enable_speaker_separation and not speaker_separation_applied,
+            analyze_senior_only=analyze_senior_only
         )
-        
+
         result = await analyzer.analyze_mental_health(analysis_request)
+
+        # Speech API의 화자 분리 정보 추가
+        if speaker_separation_applied:
+            result.speaker_separation_applied = True
+            result.original_text = transcription.transcript
+            result.senior_text = transcription.senior_transcript or ""
+            result.guardian_text = transcription.guardian_transcript or ""
+            result.analyzed_text_type = "senior"
         
         logger.info(f"통합 분석 완료 - 신뢰도: {result.confidence}")
         return result

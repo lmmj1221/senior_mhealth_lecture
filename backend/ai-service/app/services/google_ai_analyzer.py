@@ -1,6 +1,6 @@
 """
-Vertex AI Gemini API 기반 텍스트 분석 서비스
-GCP 내부에서 제공하는 Vertex AI의 Gemini 모델 사용
+Google AI SDK 기반 텍스트 분석 서비스
+Google AI의 Gemini 모델을 API 키로 직접 사용
 """
 
 import os
@@ -8,9 +8,7 @@ import json
 import logging
 from typing import Dict, Any
 from datetime import datetime
-import vertexai
-from vertexai.generative_models import GenerativeModel, ChatSession
-from google.cloud import aiplatform
+import google.generativeai as genai
 from pydantic import BaseModel, Field
 
 # 로깅 설정
@@ -43,54 +41,45 @@ class AnalysisResponse(BaseModel):
     guardian_text: str = Field(default="", description="보호자 발화 텍스트")
 
 
-class VertexAIAnalyzer:
-    """Vertex AI Gemini를 사용한 텍스트 기반 정신건강 분석기"""
+class GoogleAIAnalyzer:
+    """Google AI SDK를 사용한 텍스트 기반 정신건강 분석기"""
 
     def __init__(self):
-        """Vertex AI 분석기 초기화"""
-        # GCP 프로젝트 설정
-        project_id = os.getenv('GCP_PROJECT_ID') or os.getenv('GOOGLE_CLOUD_PROJECT')
-        location = os.getenv('VERTEX_AI_LOCATION') or os.getenv('GCP_LOCATION', 'asia-northeast3')  # 서울 리전
+        """Google AI 분석기 초기화"""
+        # API 키 설정
+        api_key = os.getenv('GOOGLE_AI_API_KEY') or os.getenv('GEMINI_API_KEY')
 
-        if not project_id:
-            raise ValueError("GCP_PROJECT_ID 환경변수가 설정되지 않았습니다")
+        if not api_key:
+            raise ValueError("GOOGLE_AI_API_KEY 환경변수가 설정되지 않았습니다")
 
-        # Vertex AI 초기화
-        vertexai.init(project=project_id, location=location)
+        # Google AI SDK 초기화
+        genai.configure(api_key=api_key)
 
         # Gemini 모델 초기화
-        # 환경변수에서 모델명 가져오기, 기본값은 gemini-1.5-flash
-        model_name = os.getenv('MODEL_NAME', 'gemini-1.5-flash')
+        # Gemini 2.0 이상 사용
+        model_name = os.getenv('MODEL_NAME', 'gemini-2.0-flash-exp')
 
-        # 모델명 유효성 검사 및 대체
+        # 사용 가능한 모델 목록 (Gemini 2.0 이상)
         valid_models = [
-            'gemini-1.5-flash',
-            'gemini-1.5-pro',
-            'gemini-1.0-pro',
-            'gemini-2.0-flash'
+            'gemini-2.0-flash-exp',  # Gemini 2.0 Flash Experimental
+            'gemini-exp-1206',       # Experimental model
+            'gemini-1.5-pro',        # Fallback to 1.5 Pro if 2.0 unavailable
+            'gemini-1.5-flash'       # Final fallback
         ]
 
+        # 환경변수로 지정된 모델이 유효한지 확인
         if model_name not in valid_models:
-            logger.warning(f"지원되지 않는 모델명: {model_name}, gemini-1.5-flash로 대체")
-            model_name = 'gemini-1.5-flash'
+            logger.warning(f"지정된 모델 {model_name}이 유효하지 않음. gemini-2.0-flash-exp 사용")
+            model_name = 'gemini-2.0-flash-exp'
 
-        try:
-            self.model = GenerativeModel(
-                model_name=model_name,
-                generation_config={
-                    'temperature': 0.7,
-                    'top_p': 0.95,
-                    'top_k': 40,
-                    'max_output_tokens': 1024,
-                }
-            )
-            logger.info(f"Vertex AI 모델 초기화 완료: {model_name}")
-        except Exception as e:
-            logger.error(f"Vertex AI 모델 초기화 실패: {str(e)}")
-            # 대체 모델로 재시도
+        # 모델 초기화 시도
+        model_initialized = False
+        for attempt_model in [model_name] + valid_models:
+            if model_initialized:
+                break
             try:
-                self.model = GenerativeModel(
-                    model_name='gemini-1.0-pro',
+                self.model = genai.GenerativeModel(
+                    model_name=attempt_model,
                     generation_config={
                         'temperature': 0.7,
                         'top_p': 0.95,
@@ -98,12 +87,26 @@ class VertexAIAnalyzer:
                         'max_output_tokens': 1024,
                     }
                 )
-                logger.info("대체 모델 gemini-1.0-pro로 초기화 완료")
-            except Exception as fallback_error:
-                logger.error(f"대체 모델도 실패: {str(fallback_error)}")
-                raise ValueError(f"Vertex AI 모델 초기화 실패: {str(e)}")
+                logger.info(f"Google AI 모델 초기화 완료: {attempt_model}")
+                model_initialized = True
+                break
+            except Exception as e:
+                logger.warning(f"모델 {attempt_model} 초기화 실패: {str(e)}")
+                continue
 
-        logger.info(f"Vertex AI Gemini 분석기 초기화 완료 - 프로젝트: {project_id}, 리전: {location}")
+        if not model_initialized:
+            raise ValueError("Google AI 모델 초기화 실패: 사용 가능한 모델이 없습니다")
+
+        # 화자 분리 서비스 초기화
+        try:
+            from app.services.speaker_separator import SpeakerSeparator
+            self.speaker_separator = SpeakerSeparator()
+            logger.info("화자 분리 서비스 초기화 완료")
+        except ImportError:
+            self.speaker_separator = None
+            logger.warning("화자 분리 서비스를 사용할 수 없습니다")
+
+        logger.info(f"Google AI Gemini 분석기 초기화 완료 - 모델: {model_name}")
 
     def _build_prompt(self, text: str) -> str:
         """분석용 프롬프트 생성"""
@@ -137,8 +140,43 @@ class VertexAIAnalyzer:
         try:
             logger.info(f"분석 시작 - 사용자: {request.user_id}, 텍스트 길이: {len(request.text)}")
 
+            # 원본 텍스트 저장
+            original_text = request.text
+            text_to_analyze = request.text
+            analyzed_text_type = "full"
+            senior_text = ""
+            guardian_text = ""
+            speaker_separation_applied = False
+
+            # 화자 분리 처리
+            if request.enable_speaker_separation and self.speaker_separator:
+                try:
+                    logger.info("화자 분리 시작...")
+                    separation_result = self.speaker_separator.separate_speakers(request.text)
+
+                    if separation_result:
+                        speaker_separation_applied = True
+                        senior_text = separation_result.senior_text
+                        guardian_text = separation_result.guardian_text
+
+                        logger.info(f"화자 분리 완료 - 방법: {separation_result.separation_method}, "
+                                  f"신뢰도: {separation_result.confidence}")
+
+                        # 시니어 발화만 분석 옵션이 활성화되고 시니어 텍스트가 있는 경우
+                        if request.analyze_senior_only and senior_text:
+                            text_to_analyze = senior_text
+                            analyzed_text_type = "senior"
+                            logger.info("시니어 발화만 분석합니다")
+                        elif not senior_text and guardian_text:
+                            # 시니어 발화가 없고 보호자 발화만 있는 경우
+                            logger.warning("시니어 발화가 없습니다. 전체 텍스트를 분석합니다")
+                            analyzed_text_type = "full"
+                except Exception as e:
+                    logger.error(f"화자 분리 실패: {str(e)}")
+                    # 화자 분리 실패 시 전체 텍스트 분석
+
             # 텍스트가 너무 짧은 경우
-            if len(request.text) < 10:
+            if len(text_to_analyze) < 10:
                 return AnalysisResponse(
                     depression_score=0,
                     anxiety_score=0,
@@ -146,19 +184,31 @@ class VertexAIAnalyzer:
                     emotional_state="분석 불가",
                     key_concerns=["텍스트가 너무 짧음"],
                     recommendations=["더 자세한 설명이 필요합니다"],
-                    confidence=0.1
+                    confidence=0.1,
+                    speaker_separation_applied=speaker_separation_applied,
+                    analyzed_text_type=analyzed_text_type,
+                    original_text=original_text,
+                    senior_text=senior_text,
+                    guardian_text=guardian_text
                 )
 
             # 프롬프트 생성
-            prompt = self._build_prompt(request.text)
+            prompt = self._build_prompt(text_to_analyze)
 
-            # Vertex AI Gemini API 호출
+            # Google AI Gemini API 호출
             response = await self.model.generate_content_async(prompt)
 
             # 응답 파싱
             result = self._parse_response(response.text)
 
-            logger.info(f"분석 완료 - 신뢰도: {result.confidence}")
+            # 화자 분리 정보 추가
+            result.speaker_separation_applied = speaker_separation_applied
+            result.analyzed_text_type = analyzed_text_type
+            result.original_text = original_text
+            result.senior_text = senior_text
+            result.guardian_text = guardian_text
+
+            logger.info(f"분석 완료 - 신뢰도: {result.confidence}, 분석 유형: {analyzed_text_type}")
             return result
 
         except Exception as e:
@@ -231,7 +281,7 @@ class VertexAIAnalyzer:
             # 프롬프트 생성
             prompt = self._build_prompt(request.text)
 
-            # Vertex AI Gemini API 호출 (동기)
+            # Google AI Gemini API 호출 (동기)
             response = self.model.generate_content(prompt)
 
             # 응답 파싱
@@ -252,13 +302,13 @@ class VertexAIAnalyzer:
                 confidence=0
             )
 
-    def start_chat_session(self) -> ChatSession:
-        """대화형 세션 시작 (Vertex AI의 채팅 기능 활용)"""
+    def start_chat_session(self):
+        """대화형 세션 시작 (Google AI의 채팅 기능 활용)"""
         chat = self.model.start_chat()
-        logger.info("Vertex AI 채팅 세션 시작")
+        logger.info("Google AI 채팅 세션 시작")
         return chat
 
-    def analyze_with_context(self, text: str, chat_session: ChatSession) -> AnalysisResponse:
+    def analyze_with_context(self, text: str, chat_session) -> AnalysisResponse:
         """이전 대화 컨텍스트를 고려한 분석"""
         try:
             prompt = self._build_prompt(text)
