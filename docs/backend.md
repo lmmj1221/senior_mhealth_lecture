@@ -507,14 +507,14 @@ graph TB
 
 ```mermaid
 graph LR
-    A[Application<br/>Logs] --> B[Logstash<br/>수집/파싱]
-    B --> C[Elasticsearch<br/>저장/검색]
-    C --> D[Kibana<br/>시각화]
+    A[📹 Application<br/>로그 생성] --> B[🎬 Logstash<br/>수집/편집]
+    B --> C[🎞️ Elasticsearch<br/>필름 보관]
+    C --> D[🎪 Kibana<br/>상영/시각화]
 ```
 
-**1. 📹 촬영 (로그 생성)**
+**1. 📹 촬영 (Application - 로그 생성)**
 ```python
-# 애플리케이션에서 로그 남기기
+# 애플리케이션에서 로그 남기기 (카메라 촬영)
 logger.info("사용자 user123이 로그인했습니다")
 logger.error("결제 API 호출 실패: 타임아웃")
 logger.warning("메모리 사용량 80% 초과")
@@ -522,9 +522,10 @@ logger.warning("메모리 사용량 80% 초과")
 
 **2. 🎬 편집 (Logstash - 수집/파싱)**
 ```
-원본 로그: "2024-01-20 14:30:00 ERROR 결제 API 호출 실패"
-         ↓ (파싱)
-구조화된 데이터:
+원본 로그 (촬영한 원본 영상):
+"2024-01-20 14:30:00 ERROR 결제 API 호출 실패"
+         ↓ (편집 작업)
+구조화된 데이터 (편집된 장면):
 {
   "timestamp": "2024-01-20T14:30:00",
   "level": "ERROR",
@@ -533,31 +534,32 @@ logger.warning("메모리 사용량 80% 초과")
 }
 ```
 
-**3. 🗄️ 보관 (Elasticsearch - 저장)**
+**3. 🎞️ 필름 보관 (Elasticsearch - 저장/인덱싱)**
 ```
-수백만 개의 로그를 빠르게 검색 가능
-- "최근 1시간 동안 에러 몇 개?"
-- "user123이 호출한 API는?"
-- "결제 실패 로그만 보여줘"
-→ 0.1초 만에 검색! ⚡
+편집된 영상을 필름 보관소에 정리:
+- 수백만 개의 로그를 체계적으로 보관
+- 장면별 인덱스로 빠른 검색 가능
+- "최근 1시간 에러 장면?" → 0.1초 검색! ⚡
+- "user123 등장 장면?" → 즉시 찾기!
 ```
 
-**4. 📊 상영 (Kibana - 시각화)**
+**4. 🎪 상영 (Kibana - 시각화)**
 ```
-대시보드에서 한눈에 파악:
-📈 시간대별 에러 발생 추이
-📊 API별 호출 횟수
-🗺️ 지역별 접속 통계
-⚠️ 실시간 알림 (에러 급증 시)
+극장에서 대형 스크린으로 상영:
+📈 시간대별 에러 발생 추이 (영화 타임라인)
+📊 API별 호출 횟수 (등장인물별 비중)
+🗺️ 지역별 접속 통계 (촬영 지역 지도)
+⚠️ 실시간 알림 (긴급 속보!)
 ```
 
 ### 구성 요소
 
 | 컴포넌트 | 역할 | 비유 |
 |----------|------|------|
-| **Elasticsearch** | 로그 저장 및 검색 | 🗄️ 스마트 보관함 (빠른 검색) |
-| **Logstash** | 로그 수집 및 파싱 | 🎬 영상 편집기 (데이터 정제) |
-| **Kibana** | 시각화 대시보드 | 📺 모니터링 TV (한눈에 파악) |
+| **Application** | 로그 생성 | 📹 카메라 (원본 촬영) |
+| **Logstash** | 로그 수집 및 파싱 | 🎬 편집실 (영상 편집/정제) |
+| **Elasticsearch** | 로그 저장 및 인덱싱 | 🎞️ 필름 보관소 (체계적 보관) |
+| **Kibana** | 시각화 대시보드 | 🎪 상영관 (대형 스크린 상영) |
 
 ### 실제 사용 예시
 
@@ -951,7 +953,7 @@ message = client.messages.create(
 - **Channel Talk**: 고객 채팅 상담
 - **Stripe**: 결제 처리
 - **SendGrid**: 이메일 발송
-- **Firebase**: 백엔드 서비스
+- **Firebase**: 인증/DB/스토리지
 
 **선택 가이드:**
 
@@ -1545,48 +1547,76 @@ graph LR
 
 ```mermaid
 graph TB
-    subgraph Frontend["프론트엔드"]
-        A1[Next.js Web App<br/>Vercel]
+    subgraph Client["클라이언트"]
+        A1[🌐 Next.js Web App<br/>Vercel]
+        A2[📱 Mobile App<br/>React Native/Flutter]
+        A3[👴👵 노인용 UI]
+        A4[👨‍⚕️ 보호자 UI]
     end
 
     subgraph Backend["백엔드 서비스"]
-        B1[API Service<br/>FastAPI]
-        B2[AI Service<br/>Vertex AI/Gemini]
+        B1[API Service<br/>FastAPI<br/>Cloud Run<br/>🚪 모든 요청의 관문]
+        B2[AI Service<br/>Vertex AI/Gemini<br/>Cloud Run]
     end
 
     subgraph Database["데이터 저장소"]
-        C1[Cloud SQL<br/>MySQL]
-        C2[BigQuery<br/>분석]
-        C3[Firebase Storage<br/>음성 파일]
+        C1[Cloud SQL<br/>MySQL<br/>사용자/대화 데이터]
+        C2[BigQuery<br/>분석 데이터<br/>정신건강 통계]
+        C3[Firebase Storage<br/>음성 파일<br/>대화 녹음]
     end
 
     subgraph Cloud["GCP 인프라"]
-        D1[Cloud Run<br/>서버리스]
-        D2[Cloud Storage<br/>파일]
-        D3[Vertex AI<br/>ML]
+        D1[Cloud Run<br/>서버리스 배포]
+        D2[Cloud Storage<br/>파일 저장소]
+        D3[Vertex AI<br/>ML 플랫폼]
     end
 
-    A1 -->|API 호출| B1
-    A1 -->|AI 분석| B2
+    A1 -->|REST API| B1
+    A2 -->|REST API| B1
+    A3 -->|음성 녹음| A2
+    A4 -->|데이터 조회| A2
+
+    B1 -->|텍스트/음성 분석 요청| B2
     B1 --> C1
-    B2 --> C1
     B1 --> C2
-    B2 --> D3
     B1 --> C3
+
+    B2 --> C1
+    B2 --> C2
     B2 --> C3
+    B2 --> D3
 ```
+
+**아키텍처 원칙** 🎯:
+1. **모든 클라이언트 → API Service**: Web App, Mobile App 모두 API Service를 통해서만 접근
+2. **API Service = 게이트웨이**: 인증, 검증, 라우팅 담당
+3. **API Service → AI Service**: 내부 서비스 간 통신
+
+**클라이언트 구성**:
+- 🌐 **Web App (Next.js)**: 관리자/보호자용 대시보드 → API Service 호출
+- 📱 **Mobile App (React Native/Flutter)**:
+  - 👴👵 **노인용 UI**: 큰 글씨, 간편한 음성 녹음 → Mobile App → API Service
+  - 👨‍⚕️ **보호자 UI**: 정신건강 상태 모니터링 → Mobile App → API Service
+- **중요**: 클라이언트는 절대 AI Service에 직접 접근하지 않음!
 
 ### 기술 스택 정리
 
 | 계층 | 기술 | 역할 |
 |------|------|------|
-| **Frontend** | Next.js | 웹 애플리케이션 |
-| **API Server** | FastAPI (Python) | 사용자 관리 API |
-| **AI Server** | FastAPI + Vertex AI | 음성 분석 AI |
-| **Database** | Cloud SQL (MySQL) | 관계형 데이터 |
-| **Analytics** | BigQuery | 데이터 분석 |
-| **Storage** | Firebase Storage | 파일 저장 |
-| **Hosting** | Vercel + Cloud Run | 배포 플랫폼 |
+| **Frontend (Web)** | Next.js | 웹 대시보드 (관리자/보호자용) |
+| **Frontend (Mobile)** | React Native/Flutter | 모바일 앱 (노인/보호자용) |
+| **API Service** | FastAPI (Python) | 🚪 게이트웨이 - 인증, 데이터 CRUD, 라우팅 |
+| **AI Service** | FastAPI + Vertex AI | 🧠 AI 엔진 - 음성 인식, 정신건강 분석 |
+| **Database** | Cloud SQL (MySQL) | 사용자/대화 데이터 저장 |
+| **Analytics** | BigQuery | 정신건강 통계 분석 |
+| **Storage** | Firebase Storage | 음성 파일 저장 |
+| **ML Platform** | Vertex AI (Gemini) | AI 모델 실행 |
+| **Hosting** | Vercel + Cloud Run | 배포 플랫폼 (Web + Backend) |
+
+**아키텍처 핵심**:
+- 모든 클라이언트(Web/Mobile) → API Service (게이트웨이)
+- API Service → AI Service (내부 통신)
+- AI Service → Vertex AI (AI 처리)
 
 ---
 
