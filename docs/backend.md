@@ -274,6 +274,1057 @@ app.listen(3000); // Node.js가 미니 WAS 역할
 
 ---
 
+#### 💡 실제 프로젝트 예시 1: 웹에서 분석 결과 조회 과정
+
+> **이 프로젝트(Senior MHealth)에서 웹 대시보드에서 "분석 결과 조회" 버튼을 클릭했을 때 무슨 일이 일어나는가?**
+>
+> 웹 브라우저에서 버튼을 클릭한 순간부터 결과를 화면에 표시하기까지의 **전체 여정**을 코드와 함께 단계별로 살펴봅시다.
+>
+> ⚠️ **주의**: 이 예시는 **이미 저장된 분석 결과를 조회**하는 과정입니다. 음성파일 업로드 및 분석 과정은 [예시 2](#💡-실제-프로젝트-예시-2-모바일-앱에서-음성파일-업로드-및-자동-분석-과정)를 참고하세요.
+
+---
+
+##### 🎬 시작: 사용자가 버튼 클릭
+
+**1단계: 브라우저 (프론트엔드) - React 컴포넌트**
+
+```tsx
+// frontend/web/src/app/analyses/page.tsx (40번째 줄)
+export default function AnalysesPage() {
+  // 🔹 커스텀 훅 호출 - 데이터 가져오기 시작!
+  const { analyses, seniors, stats, isLoading, error } = useApiData();
+
+  // 화면 렌더링
+  return (
+    <div>
+      {analyses.map(analysis => (
+        <div key={analysis.analysisId}>
+          <h3>{analysis.seniorName}</h3>
+          <p>우울증 점수: {analysis.result.mentalHealthAnalysis.depression.score}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+**무슨 일이 일어났나?**
+- 📄 React 컴포넌트가 로드됨
+- 🎣 `useApiData()` 훅이 실행됨
+- 🔄 자동으로 데이터 가져오기 시작
+
+---
+
+##### 📡 2단계: 커스텀 훅 - 데이터 요청 준비
+
+```typescript
+// frontend/web/src/hooks/useApiData.ts (90번째 줄)
+const fetchDataWithAuth = useCallback(async () => {
+  console.log('🚀 데이터 가져오기 시작!');
+  setIsLoading(true);  // 로딩 상태 표시
+
+  try {
+    // 1️⃣ API 클라이언트를 통해 분석 데이터 요청
+    const callsAnalysesRes = await apiClient.getCallsWithAnalyses();
+
+    if (callsAnalysesRes.success && callsAnalysesRes.data) {
+      console.log('✅ 분석 결과 수신:', callsAnalysesRes.data.analyses.length, '개');
+      setAnalyses(callsAnalysesRes.data.analyses);  // 상태 업데이트
+    }
+  } catch (error) {
+    console.error('❌ 오류 발생:', error);
+    setError(error.message);
+  } finally {
+    setIsLoading(false);  // 로딩 완료
+  }
+}, []);
+```
+
+**무슨 일이 일어났나?**
+- 🔐 Firebase Auth에서 현재 로그인된 사용자 확인
+- 📞 `apiClient.getCallsWithAnalyses()` 호출
+- ⏳ 로딩 상태를 `true`로 설정 (화면에 스피너 표시)
+
+---
+
+##### 🔐 3단계: API 클라이언트 - 인증 토큰 획득
+
+```typescript
+// frontend/web/src/lib/apiClient.ts (209번째 줄)
+private async getAuthToken(): Promise<string> {
+  const auth = getAuth();  // Firebase Auth 인스턴스
+  let user = auth.currentUser;  // 현재 로그인한 사용자
+
+  if (!user) {
+    // 🕐 사용자 인증 대기 (최대 5초)
+    for (let i = 0; i < 10; i++) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      user = auth.currentUser;
+      if (user) break;
+    }
+  }
+
+  if (!user) {
+    throw new Error('사용자가 로그인되어 있지 않습니다.');
+  }
+
+  // 🎫 Firebase ID Token 발급
+  return await user.getIdToken();
+}
+```
+
+**무슨 일이 일어났나?**
+- 🔍 Firebase Auth에서 현재 사용자 확인
+- 🎫 JWT 토큰 발급 (예: `eyJhbGciOiJSUzI1NiIsImtpZCI6...`)
+- 이 토큰으로 백엔드에 "나는 john@example.com이야!"라고 증명
+
+---
+
+##### 🌐 4단계: HTTP 요청 전송
+
+```typescript
+// frontend/web/src/lib/apiClient.ts (243번째 줄)
+private async fetchApi<T>(endpoint: string, options: RequestInit = {}) {
+  // 1️⃣ 인증 토큰 획득
+  const token = await this.getAuthToken();
+
+  // 2️⃣ API URL 생성
+  const url = `${this.baseUrl}${endpoint}`;
+  // 예: https://api-service-xxxxx.run.app/api/v1/calls-analyses
+
+  console.log('📤 API 요청:', url);
+
+  // 3️⃣ HTTP 헤더 설정
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,  // 🔑 인증 토큰 포함!
+  };
+
+  // 4️⃣ HTTP GET 요청 전송
+  const response = await fetch(url, {
+    method: 'GET',
+    headers,
+    mode: 'cors',  // CORS 허용
+  });
+
+  // 5️⃣ 응답 상태 체크
+  if (!response.ok) {
+    throw new Error(`서버 오류 (${response.status})`);
+  }
+
+  // 6️⃣ JSON 파싱
+  const data = await response.json();
+
+  return {
+    success: true,
+    data: data.data || data
+  };
+}
+```
+
+**무슨 일이 일어났나?**
+- 📦 HTTP 요청 패킷 생성:
+  ```http
+  GET /api/v1/calls-analyses HTTP/1.1
+  Host: api-service-xxxxx.run.app
+  Content-Type: application/json
+  Authorization: Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6...
+  ```
+- 🌍 인터넷을 통해 Cloud Run 서버로 전송
+- ⏳ 서버 응답 대기
+
+---
+
+##### ☁️ 5단계: Cloud Run - 요청 수신
+
+**Cloud Run (Google Cloud Platform)**
+
+```
+🌐 인터넷
+    ↓
+☁️ Google Cloud Load Balancer
+    ↓
+🐳 Cloud Run Container (Docker)
+    ↓
+⚙️ Uvicorn (애플리케이션 서버)
+```
+
+**Uvicorn이 하는 일:**
+
+```python
+# Uvicorn이 내부적으로 수행 (자동)
+# 1. TCP 소켓에서 HTTP 패킷 수신
+raw_packet = """
+GET /api/v1/calls-analyses HTTP/1.1
+Host: api-service-xxxxx.run.app
+Authorization: Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6...
+"""
+
+# 2. HTTP 패킷 파싱
+request_object = {
+    'method': 'GET',
+    'path': '/api/v1/calls-analyses',
+    'headers': {
+        'Authorization': 'Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6...'
+    }
+}
+
+# 3. FastAPI에 Request 객체 전달
+```
+
+---
+
+##### 🔧 6단계: FastAPI - 라우팅
+
+```python
+# backend/api-service/app/main.py (10번째 줄)
+app = FastAPI(
+    title="Senior MHealth User API",
+    version="1.0.0"
+)
+
+# CORS 미들웨어
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 모든 도메인 허용
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 라우터 등록
+from app.api.analysis import router as analysis_router
+app.include_router(analysis_router, prefix="/analyze", tags=["Analysis"])
+```
+
+**FastAPI가 하는 일:**
+
+1. 📍 **URL 매칭**: `/analyze/results/{request_id}` → `get_analysis_results()` 함수 찾기
+2. 🔐 **미들웨어 실행**: CORS 체크, 인증 확인
+3. ➡️ **컨트롤러로 전달**: 해당 함수 호출
+
+---
+
+##### 🔑 7단계: 인증 미들웨어 - 토큰 검증
+
+```python
+# backend/api-service/app/api/users.py
+async def verify_token(authorization: str = Header(None)) -> Optional[Dict]:
+    """Firebase ID Token 검증"""
+
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="인증 토큰이 없습니다")
+
+    # 1️⃣ 토큰 추출
+    token = authorization.split("Bearer ")[1]
+
+    try:
+        # 2️⃣ Firebase Admin SDK로 토큰 검증
+        decoded_token = auth.verify_id_token(token)
+
+        # 3️⃣ 사용자 정보 반환
+        return {
+            "uid": decoded_token["uid"],          # 사용자 고유 ID
+            "email": decoded_token.get("email"),  # 이메일
+            "name": decoded_token.get("name")     # 이름
+        }
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="유효하지 않은 토큰")
+```
+
+**무슨 일이 일어났나?**
+- 🎫 JWT 토큰 디코딩 및 검증
+- 🔐 Firebase에 토큰 유효성 확인 요청
+- ✅ 사용자 정보 추출: `{"uid": "abc123", "email": "john@example.com"}`
+
+---
+
+##### 📊 8단계: 컨트롤러 - 비즈니스 로직 실행
+
+```python
+# backend/api-service/app/api/analysis.py (203번째 줄)
+@router.get("/results/{request_id}")
+async def get_analysis_results(
+    request_id: str,
+    current_user: Dict = Depends(verify_token)  # 🔐 인증 필수!
+):
+    """분석 결과 조회"""
+
+    # 1️⃣ 사용자 인증 확인
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    logger.info(f"📊 사용자 {current_user['email']}가 분석 결과 {request_id} 조회")
+
+    # 2️⃣ Firestore에서 데이터 조회
+    if FIREBASE_ENABLED and db:
+        # Firestore 쿼리
+        doc = db.collection("analysis_results").document(request_id).get()
+
+        if not doc.exists:
+            raise HTTPException(status_code=404, detail="분석 결과를 찾을 수 없습니다")
+
+        # 3️⃣ 데이터 추출
+        data = doc.to_dict()
+        data["request_id"] = request_id
+
+        # 4️⃣ 응답 반환
+        return {
+            "success": True,
+            "data": data
+        }
+```
+
+**무슨 일이 일어났나?**
+- 🔍 Firestore에서 `analysis_results/{request_id}` 문서 조회
+- 📦 데이터 가져오기:
+  ```json
+  {
+    "mentalHealthAnalysis": {
+      "depression": {"score": 35, "riskLevel": "경도"},
+      "cognitive": {"score": 78, "riskLevel": "정상"}
+    },
+    "transcription": {"text": "안녕하세요..."},
+    "summary": "전반적으로 안정적인 상태입니다"
+  }
+  ```
+
+---
+
+##### 🗄️ 9단계: Firestore - 데이터베이스 조회
+
+```python
+# Firestore 내부 동작 (자동)
+
+# 1. 컬렉션 및 문서 경로 확인
+collection_path = "analysis_results"
+document_id = "abc123-def456-ghi789"
+
+# 2. 인덱스를 통해 빠른 검색
+# (Firestore는 NoSQL이므로 모든 필드에 자동 인덱싱)
+
+# 3. 문서 데이터 반환
+document_data = {
+    "analysisId": "abc123-def456-ghi789",
+    "callId": "call_xyz789",
+    "result": {
+        "mentalHealthAnalysis": {
+            "depression": {"score": 35, "riskLevel": "경도"},
+            "cognitive": {"score": 78, "riskLevel": "정상"},
+            "anxiety": {"score": 42, "riskLevel": "경도"}
+        },
+        "transcription": {
+            "text": "안녕하세요. 오늘 기분이 어떠세요?",
+            "confidence": 0.92
+        },
+        "voicePatterns": {
+            "energy": 0.65,
+            "pitch_variation": 0.58
+        },
+        "summary": "전반적으로 안정적인 상태입니다",
+        "recommendations": [
+            "규칙적인 수면 패턴 유지",
+            "가벼운 운동 권장"
+        ]
+    },
+    "metadata": {
+        "processingTime": 3.5,
+        "confidence": 0.89,
+        "version": "1.0.0"
+    },
+    "createdAt": "2024-10-05T10:30:00Z"
+}
+
+# 4. Python 딕셔너리로 반환
+return document_data
+```
+
+**무슨 일이 일어났나?**
+- 🔍 Firestore가 인덱스를 통해 초고속 검색
+- 📦 문서 데이터를 Python 딕셔너리로 변환
+- ↩️ FastAPI 컨트롤러로 반환
+
+---
+
+##### 📤 10단계: 응답 생성 및 전송
+
+```python
+# FastAPI가 자동으로 처리
+
+# 1️⃣ Python 딕셔너리를 JSON으로 변환
+response_data = {
+    "success": True,
+    "data": {
+        "analysisId": "abc123-def456-ghi789",
+        "result": {
+            "mentalHealthAnalysis": {...},
+            "transcription": {...}
+        }
+    }
+}
+
+json_string = json.dumps(response_data)
+
+# 2️⃣ HTTP 응답 패킷 생성
+http_response = """
+HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 856
+
+{
+  "success": true,
+  "data": {
+    "analysisId": "abc123-def456-ghi789",
+    "result": {
+      "mentalHealthAnalysis": {
+        "depression": {"score": 35, "riskLevel": "경도"}
+      }
+    }
+  }
+}
+"""
+
+# 3️⃣ Uvicorn이 HTTP 패킷을 TCP로 전송
+```
+
+**Uvicorn (애플리케이션 서버)이 하는 일:**
+- 📦 FastAPI가 반환한 Python 객체를 JSON으로 직렬화
+- 🔧 HTTP 응답 헤더 추가 (Content-Type, Content-Length 등)
+- 📡 TCP 소켓을 통해 클라이언트로 전송
+
+---
+
+##### 🌐 11단계: 네트워크 전송
+
+```
+🐳 Cloud Run Container
+    ↓ (HTTP 응답 패킷)
+☁️ Google Cloud Load Balancer
+    ↓ (인터넷)
+🌍 Internet
+    ↓
+💻 사용자의 브라우저
+```
+
+**실제 전송되는 HTTP 패킷:**
+
+```http
+HTTP/1.1 200 OK
+Date: Sat, 05 Oct 2024 10:30:05 GMT
+Content-Type: application/json; charset=utf-8
+Content-Length: 856
+Server: uvicorn
+Access-Control-Allow-Origin: *
+
+{"success":true,"data":{"analysisId":"abc123-def456-ghi789","result":{"mentalHealthAnalysis":{"depression":{"score":35,"riskLevel":"경도"},"cognitive":{"score":78,"riskLevel":"정상"}}}}}
+```
+
+---
+
+##### 🖥️ 12단계: 브라우저 수신 및 처리
+
+```typescript
+// frontend/web/src/lib/apiClient.ts (278번째 줄)
+
+// 1️⃣ HTTP 응답 수신
+const response = await fetch(url, options);
+
+// 2️⃣ JSON 파싱
+const data = await response.json();
+/*
+data = {
+  success: true,
+  data: {
+    analysisId: "abc123-def456-ghi789",
+    result: {
+      mentalHealthAnalysis: {
+        depression: { score: 35, riskLevel: "경도" }
+      }
+    }
+  }
+}
+*/
+
+// 3️⃣ 반환
+return {
+  success: true,
+  data: data.data
+};
+```
+
+---
+
+##### 🎨 13단계: React 상태 업데이트 및 화면 렌더링
+
+```typescript
+// frontend/web/src/hooks/useApiData.ts (130번째 줄)
+
+// 1️⃣ 응답 데이터 받음
+const callsAnalysesRes = await apiClient.getCallsWithAnalyses();
+
+if (callsAnalysesRes.success && callsAnalysesRes.data) {
+  console.log('✅ 분석 결과 수신:', callsAnalysesRes.data.analyses.length, '개');
+
+  // 2️⃣ React 상태 업데이트
+  setAnalyses(callsAnalysesRes.data.analyses);
+  /*
+  이 순간 React가:
+  1. analyses 상태 변경 감지
+  2. AnalysesPage 컴포넌트 리렌더링
+  3. 화면 업데이트!
+  */
+}
+
+setIsLoading(false);  // 로딩 스피너 제거
+```
+
+---
+
+##### 🎉 14단계: 최종 화면 표시
+
+```tsx
+// frontend/web/src/app/analyses/page.tsx (118번째 줄)
+
+// React가 자동으로 화면 업데이트!
+{latestAnalysis.result?.mentalHealthAnalysis && (
+  <div className="grid grid-cols-3 gap-3">
+    {/* 우울증 점수 표시 */}
+    <div className="bg-blue-50 rounded-lg p-3 text-center">
+      <div className="text-xl font-bold text-blue-600">
+        35  {/* ← Firestore에서 가져온 데이터! */}
+      </div>
+      <div className="text-sm text-blue-700">우울증</div>
+    </div>
+
+    {/* 인지능력 점수 표시 */}
+    <div className="bg-green-50 rounded-lg p-3 text-center">
+      <div className="text-xl font-bold text-green-600">
+        78  {/* ← Firestore에서 가져온 데이터! */}
+      </div>
+      <div className="text-sm text-green-700">인지능력</div>
+    </div>
+  </div>
+)}
+```
+
+**사용자가 보는 화면:**
+
+```
+┌─────────────────────────────────────┐
+│  📊 최근 분석 결과                    │
+├─────────────────────────────────────┤
+│  이름: 홍길동                         │
+│  날짜: 2024-10-05 10:30:00          │
+│                                     │
+│  ┌──────┐  ┌──────┐  ┌──────┐      │
+│  │  35  │  │  78  │  │  42  │      │
+│  │ 우울증 │  │인지능력│  │ 불안  │      │
+│  └──────┘  └──────┘  └──────┘      │
+│                                     │
+│  AI 종합해석: 전반적으로 안정적인      │
+│  상태입니다                           │
+└─────────────────────────────────────┘
+```
+
+---
+
+##### 📊 전체 흐름 요약
+
+```mermaid
+sequenceDiagram
+    participant User as 👤 사용자
+    participant Browser as 🌐 브라우저<br/>(React)
+    participant Hook as 🎣 useApiData<br/>(커스텀 훅)
+    participant API as 📡 apiClient<br/>(HTTP 클라이언트)
+    participant Auth as 🔐 Firebase Auth<br/>(인증)
+    participant CloudRun as ☁️ Cloud Run<br/>(Uvicorn+FastAPI)
+    participant Firestore as 🗄️ Firestore<br/>(데이터베이스)
+
+    User->>Browser: 1. 분석 결과 페이지 접속
+    Browser->>Hook: 2. useApiData() 호출
+    Hook->>API: 3. getCallsWithAnalyses()
+    API->>Auth: 4. getIdToken() - 토큰 요청
+    Auth-->>API: 5. JWT 토큰 반환
+
+    API->>CloudRun: 6. GET /api/v1/calls-analyses<br/>Authorization: Bearer {token}
+
+    Note over CloudRun: 7. Uvicorn이 HTTP 패킷 파싱
+    Note over CloudRun: 8. FastAPI 라우팅
+    Note over CloudRun: 9. verify_token() - 인증 확인
+
+    CloudRun->>Firestore: 10. 데이터 조회 요청
+    Firestore-->>CloudRun: 11. 분석 결과 반환
+
+    Note over CloudRun: 12. JSON 직렬화
+    Note over CloudRun: 13. HTTP 응답 생성
+
+    CloudRun-->>API: 14. HTTP 200 + JSON 데이터
+    API-->>Hook: 15. 파싱된 데이터 반환
+    Hook-->>Browser: 16. setAnalyses() - 상태 업데이트
+
+    Note over Browser: 17. React 리렌더링
+
+    Browser-->>User: 18. 화면에 결과 표시 ✨
+```
+
+---
+
+##### 🔑 핵심 정리
+
+**각 계층의 역할:**
+
+| 계층 | 역할 | 실제 코드/기술 |
+|------|------|--------------|
+| **프론트엔드** | 사용자 인터페이스 | React, TypeScript |
+| **HTTP 클라이언트** | API 통신 관리 | Fetch API, apiClient |
+| **인증** | 사용자 인증 | Firebase Auth (JWT) |
+| **네트워크** | 데이터 전송 | HTTP/HTTPS, TCP/IP |
+| **애플리케이션 서버** | HTTP 처리, 라우팅 | **Uvicorn** (ASGI) |
+| **백엔드 프레임워크** | 비즈니스 로직 | **FastAPI** (Python) |
+| **데이터베이스** | 데이터 저장/조회 | Firestore (NoSQL) |
+
+**시간 흐름:**
+```
+버튼 클릭 (0ms)
+  ↓
+React 상태 업데이트 (1ms)
+  ↓
+HTTP 요청 생성 (5ms)
+  ↓
+네트워크 전송 (50-200ms) ← 가장 오래 걸림
+  ↓
+Cloud Run 처리 (10-50ms)
+  ↓
+Firestore 조회 (5-20ms)
+  ↓
+응답 전송 (50-200ms)
+  ↓
+화면 렌더링 (10ms)
+  ↓
+결과 표시 (total: 130-500ms)
+```
+
+**데이터 형태 변화:**
+```
+React 상태 (JavaScript 객체)
+  ↓
+JSON 문자열
+  ↓
+HTTP 패킷 (바이트)
+  ↓
+네트워크 전송 (TCP/IP 패킷)
+  ↓
+HTTP 패킷 (바이트)
+  ↓
+JSON 문자열
+  ↓
+Python 딕셔너리
+  ↓
+Firestore 쿼리
+  ↓
+Python 딕셔너리
+  ↓
+JSON 문자열
+  ↓
+HTTP 패킷
+  ↓
+JSON 문자열
+  ↓
+JavaScript 객체
+  ↓
+React 상태
+  ↓
+DOM 업데이트
+  ↓
+화면 표시 (픽셀)
+```
+
+> **결론**: 버튼 하나를 클릭하면 14단계, 7개 시스템을 거쳐 0.5초 만에 결과가 표시됩니다!
+> 이 모든 과정이 자동으로, 투명하게 이루어지며, 개발자는 각 계층의 역할만 이해하면 됩니다.
+
+---
+
+#### 💡 실제 프로젝트 예시 2: 모바일 앱에서 음성파일 업로드 및 자동 분석 과정
+
+> **이 프로젝트(Senior MHealth)에서 모바일 앱이 통화 녹음 파일을 감지하고 자동으로 업로드 및 분석하는 과정**
+>
+> 사용자가 전화 통화를 끝낸 후, 앱이 자동으로 녹음 파일을 감지하고 Firebase Storage에 업로드하면, Cloud Functions가 이벤트를 감지하여 AI 분석을 자동으로 실행하는 전체 여정을 코드와 함께 단계별로 살펴봅시다.
+>
+> ⚠️ **주의**: 이 예시는 **모바일 앱이 음성파일을 업로드하고 AI 분석을 트리거**하는 과정입니다. 웹에서 결과를 조회하는 과정은 [예시 1](#💡-실제-프로젝트-예시-1-웹에서-분석-결과-조회-과정)을 참고하세요.
+
+---
+
+##### 🎬 시작: 통화 종료 및 녹음 파일 생성
+
+**1단계: 모바일 디바이스 - 통화 녹음 파일 생성**
+
+```
+📱 삼성 갤럭시 기기
+  ↓
+통화 종료
+  ↓
+자동 녹음 파일 저장
+  ↓
+/storage/emulated/0/Recordings/Call/통화 녹음 [이름]_241015_143025.m4a
+```
+
+**무슨 일이 일어났나?**
+- 📞 사용자가 전화 통화 종료
+- 📼 삼성 기본 통화 앱이 자동으로 통화를 녹음
+- 💾 파일이 `/storage/emulated/0/Recordings/Call/` 경로에 저장됨
+
+---
+
+##### 👀 2단계: Flutter 앱 - 파일 시스템 감시 (Polling)
+
+```dart
+// frontend/mobile/lib/services/audio_service.dart (84번째 줄)
+void _startPolling(Directory directory) {
+  _pollingTimer?.cancel();
+  _pollingTimer = Timer.periodic(Duration(seconds: 30), (timer) async {
+    // 📁 30초마다 통화 녹음 폴더 확인
+    final files = directory.listSync().whereType<File>().where(
+      (file) => _isSamsungCallRecording(file.path.split('/').last),
+    );
+
+    for (final file in files) {
+      await _handleFileEvent(file);  // 새로운 파일 처리
+    }
+  });
+}
+```
+
+**무슨 일이 일어났나?**
+- ⏰ 30초마다 `/storage/emulated/0/Recordings/Call/` 폴더를 자동 확인
+- 🔍 삼성 통화 녹음 패턴(`통화 녹음 [이름]_*.m4a`)과 일치하는 파일 검색
+- 🆕 새로운 파일 발견 시 `_handleFileEvent()` 호출
+
+---
+
+##### 📊 3단계: Flutter 앱 - 파일 안정화 확인
+
+```dart
+// frontend/mobile/lib/services/audio_service.dart (98번째 줄)
+Future<void> _handleFileEvent(File file) async {
+  final stat = await file.stat();
+  final previousStat = _fileStats[file.path];
+
+  // 파일 크기 확인 (최소 1KB 이상)
+  if (stat.size < minFileSize) return;
+
+  // 파일 크기가 3초 동안 변하지 않으면 → 완성됨
+  if (previousStat != null && previousStat.size == stat.size) {
+    final timeDiff = DateTime.now().difference(previousStat.modified);
+
+    if (timeDiff >= fileStableDuration) {  // 3초 경과
+      print('✅ 완성된 파일 감지: ${file.path}');
+      _fileStreamController?.add(file);  // ← 업로드 트리거
+    }
+  } else {
+    _fileStats[file.path] = stat;  // 크기 변화 추적
+  }
+}
+```
+
+**무슨 일이 일어났나?**
+- ⏱️ 파일이 더 이상 쓰여지지 않는지 확인 (3초 동안 크기 불변)
+- ✅ 안정화 확인 후 Stream으로 이벤트 발송
+- 🚀 이벤트를 받은 리스너가 업로드 시작
+
+---
+
+##### ☁️ 4단계: Flutter 앱 - Firebase Storage 업로드
+
+```dart
+// frontend/mobile/lib/services/api_service.dart (177번째 줄)
+Future<String> uploadAndAnalyzeAudio(File audioFile) async {
+  // 1️⃣ 사용자 인증 확인
+  final user = _auth.currentUser;
+
+  // 2️⃣ Senior ID 획득 (API 호출)
+  final seniorId = await getOrCreateSenior();
+
+  // 3️⃣ Firebase Storage에 업로드
+  await _uploadToStorage(audioFile, user.uid, seniorId, callId, fileName);
+
+  // 4️⃣ Firestore에 통화 기록 저장
+  await _saveToFirestore(callId, user.uid, seniorId, fileName, fileSize);
+
+  return '✅ Storage 업로드 완료 - 자동 분석 대기 중...';
+}
+```
+
+```dart
+// frontend/mobile/lib/services/api_service.dart (257번째 줄)
+Future<void> _uploadToStorage(File file, String userId, String seniorId,
+    String callId, String fileName) async {
+  // 📁 Storage 경로: calls/{userId}/{seniorId}/{callId}/fileName
+  final storageRef = _storage.ref()
+    .child('calls/$userId/$seniorId/$callId/$fileName');
+
+  // 📦 메타데이터 설정
+  final metadata = SettableMetadata(
+    contentType: 'audio/m4a',
+    customMetadata: {
+      'userId': userId,
+      'seniorId': seniorId,
+      'callId': callId,
+      'uploadedAt': DateTime.now().toIso8601String(),
+    },
+  );
+
+  // 🚀 업로드 실행
+  await storageRef.putFile(file, metadata);
+  print('✅ Firebase Storage 업로드 완료');
+}
+```
+
+**무슨 일이 일어났나?**
+- 🔐 Firebase Auth로 현재 로그인한 사용자 확인
+- 🔑 ID Token 발급 (JWT)
+- 📤 Firebase Storage에 파일 업로드 (`calls/{userId}/{seniorId}/{callId}/파일명.m4a`)
+- 📝 Firestore에 통화 메타데이터 저장 (`users/{userId}/calls/{callId}`)
+
+---
+
+##### 🔥 5단계: Firebase Storage - 이벤트 트리거 발생
+
+```
+Firebase Storage
+  ↓
+파일 업로드 완료 감지
+  ↓
+finalize 이벤트 발생
+  ↓
+Cloud Functions 트리거 실행
+```
+
+**무슨 일이 일어났나?**
+- ☁️ Firebase Storage가 파일 업로드 완료를 감지
+- 🔔 `finalize` 이벤트 생성
+- ⚡ Cloud Functions의 `onFinalize` 트리거 자동 실행
+
+---
+
+##### ⚙️ 6단계: Cloud Functions - 음성 파일 자동 처리 트리거
+
+```javascript
+// backend/functions/index.js (115번째 줄)
+exports.processVoiceFile = functions.storage
+  .object()
+  .onFinalize(async (object) => {
+    // 1️⃣ 업로드된 파일 정보 추출
+    const filePath = object.name;  // calls/user123/senior456/call_789/audio.m4a
+    const metadata = object.metadata;
+
+    // 2️⃣ Firestore 업데이트 (상태: pending → processing)
+    await db.collection('calls').doc(callId).update({
+      status: 'uploaded',
+      analysisStatus: 'processing',
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    // 3️⃣ AI 분석 큐에 추가 (Pub/Sub 또는 직접 호출)
+    await triggerAIAnalysis(filePath, callId, seniorId);
+  });
+```
+
+**무슨 일이 일어났나?**
+- 📂 업로드된 파일 경로와 메타데이터 추출
+- 🗄️ Firestore에서 해당 통화 문서 찾기
+- 🔄 상태 업데이트: `analysisStatus: 'processing'`
+- 🤖 AI 분석 서비스(Cloud Run) 호출 트리거
+
+---
+
+##### 🤖 7단계: Cloud Run (AI Service) - 음성 분석 실행
+
+```python
+# backend/ai-service/app/main.py (AI 분석 서비스)
+from app.services.speech_to_text import transcribe_audio
+from app.services.vertex_ai_analyzer import analyze_conversation
+
+@app.post("/analyze")
+async def analyze_voice(request: AnalysisRequest):
+    # 1️⃣ Firebase Storage에서 음성 파일 다운로드
+    audio_file = download_from_storage(request.file_path)
+
+    # 2️⃣ 음성 → 텍스트 변환 (STT: Speech-to-Text)
+    transcript = await transcribe_audio(audio_file)
+
+    # 3️⃣ Vertex AI로 대화 분석
+    analysis_result = await analyze_conversation(transcript, senior_id)
+
+    # 4️⃣ 분석 결과를 Firestore에 저장
+    db.collection('analysis_results').document(call_id).set({
+        'callId': call_id,
+        'seniorId': senior_id,
+        'transcript': transcript,
+        'mentalHealthAnalysis': analysis_result,
+        'status': 'completed',
+        'createdAt': firestore.SERVER_TIMESTAMP
+    })
+
+    return {'success': True, 'analysisId': call_id}
+```
+
+**무슨 일이 일어났나?**
+- 📥 Cloud Run이 분석 요청 수신
+- 🎙️ Google Cloud Speech-to-Text API로 음성을 텍스트로 변환
+- 🧠 Vertex AI (Gemini)로 대화 내용 분석 (우울증, 인지 기능 등)
+- 💾 분석 결과를 Firestore `analysis_results` 컬렉션에 저장
+
+---
+
+##### 📊 8단계: Firestore - 분석 결과 저장 및 실시간 동기화
+
+```
+Firestore (analysis_results)
+  ↓
+새로운 문서 생성 (call_789)
+  ↓
+Realtime Listener 트리거
+  ↓
+모바일 앱에 실시간 푸시
+```
+
+**무슨 일이 일어났나?**
+- 🗄️ Firestore에 분석 결과 저장 완료
+- 📡 Firestore Realtime Listener가 변경 감지
+- 📲 모바일 앱이 실시간으로 새 데이터 수신
+
+---
+
+##### 📲 9단계: Flutter 앱 - 분석 완료 알림
+
+```dart
+// frontend/mobile/lib/services/api_service.dart (235번째 줄)
+Stream<Map<String, dynamic>> monitorAnalysisStatus(String callId) {
+  return _firestore
+    .collection('calls')
+    .doc(callId)
+    .snapshots()  // ← 실시간 리스너
+    .map((snapshot) {
+      final data = snapshot.data() ?? {};
+
+      if (data['analysisStatus'] == 'completed') {
+        // ✅ 분석 완료! FCM 푸시 알림 발송
+        sendPushNotification(
+          title: '음성 분석 완료',
+          body: '통화 분석 결과가 준비되었습니다.'
+        );
+      }
+
+      return data;
+    });
+}
+```
+
+**무슨 일이 일어났나?**
+- 📡 Firestore의 `snapshots()` 리스너가 실시간으로 상태 변경 감지
+- ✅ `analysisStatus: 'completed'` 확인
+- 📬 FCM(Firebase Cloud Messaging)으로 푸시 알림 발송
+- 🔔 사용자 스마트폰에 알림 표시
+
+---
+
+##### 🎯 전체 아키텍처 흐름도
+
+```mermaid
+sequenceDiagram
+    participant Phone as 📱 스마트폰
+    participant FlutterApp as 📲 Flutter 앱
+    participant FirebaseStorage as ☁️ Firebase Storage
+    participant CloudFunctions as ⚙️ Cloud Functions
+    participant CloudRunAI as 🤖 Cloud Run (AI)
+    participant Firestore as 🗄️ Firestore
+    participant FCM as 📬 FCM
+
+    Phone->>Phone: 통화 종료 → 녹음 파일 생성
+    Note over Phone: /Recordings/Call/통화녹음_241015.m4a
+
+    FlutterApp->>FlutterApp: 폴링으로 새 파일 감지 (30초 주기)
+    FlutterApp->>FlutterApp: 파일 안정화 확인 (3초)
+
+    FlutterApp->>FirebaseStorage: 파일 업로드 (putFile)
+    Note over FlutterApp,FirebaseStorage: calls/{userId}/{seniorId}/{callId}/audio.m4a
+
+    FlutterApp->>Firestore: 통화 메타데이터 저장
+    Note over Firestore: users/{userId}/calls/{callId}
+
+    FirebaseStorage->>CloudFunctions: finalize 이벤트 트리거
+
+    CloudFunctions->>Firestore: 상태 업데이트 (processing)
+    CloudFunctions->>CloudRunAI: AI 분석 요청
+
+    CloudRunAI->>CloudRunAI: 음성 → 텍스트 변환 (STT)
+    CloudRunAI->>CloudRunAI: Vertex AI 대화 분석
+    CloudRunAI->>Firestore: 분석 결과 저장
+    Note over Firestore: analysis_results/{callId}
+
+    Firestore->>FlutterApp: 실시간 업데이트 (snapshots)
+    FlutterApp->>FCM: 푸시 알림 요청
+    FCM->>Phone: 알림 표시 (분석 완료!)
+```
+
+---
+
+##### 📈 타이밍 분석
+
+| 단계 | 소요 시간 | 누적 시간 |
+|------|----------|----------|
+| 1️⃣ 통화 종료 및 파일 생성 | 즉시 | 0초 |
+| 2️⃣ 폴링으로 파일 감지 | 0~30초 | 0~30초 |
+| 3️⃣ 파일 안정화 확인 | 3초 | 3~33초 |
+| 4️⃣ Firebase Storage 업로드 | 5~10초 | 8~43초 |
+| 5️⃣ Cloud Functions 트리거 | 0.5초 | 8.5~43.5초 |
+| 6️⃣ AI 음성 분석 (STT + Vertex AI) | 10~30초 | 18.5~73.5초 |
+| 7️⃣ Firestore 저장 및 실시간 동기화 | 0.5초 | 19~74초 |
+| 8️⃣ FCM 푸시 알림 | 1초 | 20~75초 |
+
+**평균 총 소요 시간**: **약 20초 ~ 1분 15초**
+
+---
+
+##### 🔍 핵심 코드 위치 요약
+
+| 역할 | 파일 경로 | 라인 번호 |
+|------|----------|----------|
+| 파일 감시 (Polling) | [frontend/mobile/lib/services/audio_service.dart](frontend/mobile/lib/services/audio_service.dart#L84) | 84 |
+| 파일 안정화 확인 | [frontend/mobile/lib/services/audio_service.dart](frontend/mobile/lib/services/audio_service.dart#L98) | 98 |
+| Storage 업로드 | [frontend/mobile/lib/services/api_service.dart](frontend/mobile/lib/services/api_service.dart#L257) | 257 |
+| Storage 트리거 | [backend/functions/index.js](backend/functions/index.js#L115) | 115 |
+| 실시간 상태 모니터링 | [frontend/mobile/lib/services/api_service.dart](frontend/mobile/lib/services/api_service.dart#L235) | 235 |
+
+---
+
+##### 🎓 데이터 변환 과정
+
+```
+음성 파일 (.m4a)
+  ↓ (STT API)
+텍스트 (대화 내용)
+  ↓ (Vertex AI)
+분석 결과 (JSON)
+  ↓ (Firestore)
+NoSQL 문서
+  ↓ (Realtime Listener)
+Flutter State
+  ↓ (UI 렌더링)
+사용자 화면 표시
+```
+
+---
+
+> **결론**: 모바일 앱에서 통화 녹음 파일이 자동으로 감지되면, 8단계를 거쳐 20초~75초 만에 AI 분석이 완료되고 푸시 알림이 전송됩니다!
+>
+> **핵심 기술**:
+> - **폴링(Polling)**: 30초마다 파일 시스템 확인
+> - **이벤트 트리거**: Firebase Storage `finalize` 이벤트로 자동 실행
+> - **실시간 동기화**: Firestore `snapshots()` 리스너
+> - **서버리스 아키텍처**: Cloud Functions + Cloud Run (자동 확장)
+
+---
+
 ### 3️⃣ 데이터베이스 (Database)
 
 #### 탄생 배경
