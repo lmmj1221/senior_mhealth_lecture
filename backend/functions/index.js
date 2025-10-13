@@ -5,6 +5,7 @@
 
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
+const axios = require('axios');
 
 // Firebase Admin 초기화
 admin.initializeApp();
@@ -112,14 +113,125 @@ const auth = admin.auth();
 /**
  * Storage 트리거 - 음성 파일 자동 처리
  */
-// exports.processVoiceFile = functions.storage
-//   .object()
-//   .onFinalize(async (object) => {
-//     // TODO: 5주차에 구현하세요
-//     // 1. 음성 파일 메타데이터 추출
-//     // 2. Firestore 업데이트
-//     // 3. AI 분석 큐에 추가
-//   });
+exports.processVoiceFile = functions.storage
+  .object()
+  .onFinalize(async (object) => {
+    const filePath = object.name;
+    const metadata = object.metadata || {};
+    
+    console.log('🔔 Storage 트리거 발생:', filePath);
+    
+    // 음성 파일 경로인지 확인 (calls/{userId}/{seniorId}/{callId}/filename)
+    if (!filePath.startsWith('calls/')) {
+      console.log('❌ 음성 파일이 아님:', filePath);
+      return null;
+    }
+    
+    try {
+      // 1. 파일 경로에서 정보 추출
+      const pathParts = filePath.split('/');
+      if (pathParts.length < 4) {
+        console.log('❌ 잘못된 경로 구조:', filePath);
+        return null;
+      }
+      
+      const userId = pathParts[1];
+      const seniorId = pathParts[2];
+      const callId = pathParts[3];
+      const fileName = pathParts[4] || 'unknown';
+      
+      console.log('📋 파일 정보:', { userId, seniorId, callId, fileName });
+      
+      // 2. Firestore에서 해당 통화 문서 찾기
+      const callDocRef = db.collection('users').doc(userId).collection('calls').doc(callId);
+      const callDoc = await callDocRef.get();
+      
+      if (!callDoc.exists) {
+        console.log('❌ 통화 문서를 찾을 수 없음:', callId);
+        return null;
+      }
+      
+      // 3. Firestore 문서 상태 업데이트
+      await callDocRef.update({
+        status: 'uploaded',
+        analysisStatus: 'processing',
+        filePath: filePath,
+        uploadedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      
+      console.log('✅ Firestore 업데이트 완료:', callId);
+      
+      // 4. AI 분석 서비스 호출
+      const aiServiceUrl = process.env.CLOUD_RUN_AI_URL || functions.config().services?.ai_url;
+      
+      if (aiServiceUrl) {
+        console.log('🤖 AI 분석 요청 시작:', aiServiceUrl);
+        
+        // AI 분석 요청 페이로드
+        const analysisRequest = {
+          call_id: callId,
+          user_id: userId,
+          senior_id: seniorId,
+          audio_url: filePath,
+          analysis_type: 'comprehensive',
+          metadata: {
+            fileName: fileName,
+            uploadedAt: new Date().toISOString(),
+            ...metadata
+          }
+        };
+        
+        // HTTP 요청으로 AI 서비스 호출
+        try {
+          const response = await axios.post(
+            `${aiServiceUrl}/analyze`,
+            analysisRequest,
+            {
+              timeout: 30000,
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+          
+          console.log('🎉 AI 분석 요청 성공:', response.data);
+          
+          // 분석 요청 성공시 상태 업데이트
+          await callDocRef.update({
+            analysisStatus: 'ai_processing',
+            aiRequestId: response.data.analysis_id || callId,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+          
+        } catch (aiError) {
+          console.error('❌ AI 분석 요청 실패:', aiError.message);
+          
+          // 분석 요청 실패시 상태 업데이트
+          await callDocRef.update({
+            analysisStatus: 'failed',
+            errorMessage: aiError.message,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+        }
+      } else {
+        console.log('⚠️ AI 서비스 URL이 설정되지 않음');
+        
+        // AI 서비스 URL이 없을 때 상태 업데이트
+        await callDocRef.update({
+          analysisStatus: 'pending_config',
+          errorMessage: 'AI service URL not configured',
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+      }
+      
+      return { success: true, callId, status: 'processed' };
+      
+    } catch (error) {
+      console.error('❌ processVoiceFile 오류:', error);
+      return { success: false, error: error.message };
+    }
+  });
 
 /**
  * AI 분석 API
