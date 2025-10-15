@@ -128,10 +128,20 @@ mobile_app/ios/build/
 # === Firebase Service Account 키 (보안 중요!) ===
 serviceAccountKey.json
 **/serviceAccountKey.json
+service-account-key.json
+**/service-account-key.json
+serviec-account-key.json
+**/serviec-account-key.json
 firebase-adminsdk-*.json
 **/firebase-adminsdk-*.json
 google-services.json
 **/google-services.json
+
+# === 인증 및 사용자 정보 (보안 중요!) ===
+auth_users.json
+**/auth_users.json
+test_call.json
+**/test_call.json
 
 # === 학생 개인 설정 파일 (절대 커밋 금지!) ===
 # Firebase 프로젝트 설정
@@ -171,6 +181,7 @@ Thumbs.db
 *.bak
 *.backup
 *.old
+.backup_sensitive_files/
 
 # 테스트 커버리지
 coverage/
@@ -216,16 +227,7 @@ jdk-17.0.2/
 flutter_*.tar.xz
 flutter_*_stable.tar.xz
 
-.env
-
-.vercel
-
 # Task files
 # tasks.json
-# tasks/ 
+# tasks/
 setup/
-# Service Account Keys (all variations)
-service-account-key.json
-serviec-account-key.json
-**/service-account-key.json
-**/serviec-account-key.json

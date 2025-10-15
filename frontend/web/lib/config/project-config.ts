@@ -36,42 +36,42 @@ export interface ProjectConfig {
   }
 }
 
-// 기본 설정 (fallback)
+// 기본 설정 (fallback) - 환경변수로 덮어써야 합니다!
+// ⚠️ 경고: 이 기본값은 플레이스홀더입니다. 실제 프로젝트 설정은 환경변수로 제공해야 합니다.
 const DEFAULT_CONFIG: ProjectConfig = {
   project: {
-    id: 'senior-mhealth-472007',
-    name: 'Senior MHealth',
-    region: 'asia-northeast3',
-    location: 'asia-northeast3'
+    id: 'your-project-id',
+    name: 'Your Project Name',
+    region: 'us-central1',
+    location: 'us-central1'
   },
   firebase: {
-    projectId: 'senior-mhealth-472007',
-    storageBucket: 'senior-mhealth-472007.firebasestorage.app',
-    messagingSenderId: '1054806937473',
-    appId: '1:1054806937473:web:f0a71476f665350937a280',
-    apiKey: 'AIzaSyBpaQk82XnXkdZyzrtbgfUSMA70B2s1meA'
+    projectId: 'your-project-id',
+    storageBucket: 'your-project-id.firebasestorage.app',
+    messagingSenderId: 'your-messaging-sender-id',
+    appId: 'your-firebase-app-id',
+    apiKey: 'your-firebase-api-key'
   },
   services: {
     aiService: {
-      name: 'senior-mhealth-ai',
-      url: 'https://senior-mhealth-ai-du6z6zbl2a-du.a.run.app'
+      name: 'your-ai-service',
+      url: 'https://your-ai-service.run.app'
     },
     apiService: {
-      name: 'senior-mhealth-api',
-      url: 'https://senior-mhealth-api-1054806937473.asia-northeast3.run.app'
+      name: 'your-api-service',
+      url: 'https://your-api-service.run.app'
     },
     webApp: {
-      url: 'https://senior-mhealth.vercel.app'
+      url: 'https://your-app.vercel.app'
     }
   },
   security: {
     corsOrigins: [
-      'https://senior-mhealth.vercel.app',
-      'http://localhost:3000'
+      'http://localhost:3000',
+      'http://localhost:3001'
     ],
     allowedDomains: [
-      'senior-mhealth-472007.firebaseapp.com',
-      'senior-mhealth.vercel.app'
+      'localhost'
     ]
   }
 }
@@ -150,6 +150,31 @@ export function getProjectConfig(): ProjectConfig {
   // 기본 설정으로 시작하고 환경변수로 덮어쓰기
   let config = { ...DEFAULT_CONFIG }
   config = applyEnvironmentOverrides(config)
+
+  // ⚠️ 프로덕션 환경에서 플레이스홀더 값 검증
+  if (process.env.NODE_ENV === 'production') {
+    if (config.project.id === 'your-project-id' ||
+        config.firebase.projectId === 'your-project-id') {
+      throw new Error(
+        '❌ 프로젝트 설정 오류\n\n' +
+        '환경변수가 설정되지 않았습니다. 다음 환경변수를 설정해주세요:\n\n' +
+        '  • NEXT_PUBLIC_FIREBASE_PROJECT_ID\n' +
+        '  • NEXT_PUBLIC_FIREBASE_API_KEY\n' +
+        '  • NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET\n' +
+        '  • NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID\n' +
+        '  • NEXT_PUBLIC_API_URL\n\n' +
+        '자세한 내용은 SETUP_GUIDE.md를 참조하세요.'
+      )
+    }
+  }
+
+  // 개발 환경에서 경고 출력
+  if (process.env.NODE_ENV === 'development' && config.project.id === 'your-project-id') {
+    console.warn(
+      '⚠️ 경고: 플레이스홀더 설정이 사용되고 있습니다.\n' +
+      '.env 파일을 생성하고 실제 프로젝트 설정을 입력해주세요.'
+    )
+  }
 
   cachedConfig = config
   return config

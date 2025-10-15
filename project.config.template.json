@@ -1,62 +1,64 @@
 {
+  "_comment": "프로젝트 설정 템플릿 - 실제 값으로 채워주세요",
+  "_instructions": "1. 이 파일을 project.config.json으로 복사하세요. 2. YOUR_로 시작하는 모든 값을 실제 값으로 교체하세요. 3. project.config.json은 gitignore에 포함되어 있습니다.",
   "project": {
-    "id": "senior-mhealth-472007",
-    "name": "Senior MHealth",
-    "region": "asia-northeast3",
-    "location": "asia-northeast3"
+    "id": "YOUR_PROJECT_ID",
+    "name": "Your Project Name",
+    "region": "YOUR_REGION",
+    "location": "YOUR_REGION"
   },
   "firebase": {
-    "projectId": "senior-mhealth-472007",
-    "storageBucket": "senior-mhealth-472007.firebasestorage.app",
-    "messagingSenderId": "1054806937473",
-    "appId": "1:1054806937473:web:xxxxxxxxxxxxxxxx",
-    "apiKey": "AIzaSyCxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    "projectId": "YOUR_PROJECT_ID",
+    "storageBucket": "YOUR_PROJECT_ID.firebasestorage.app",
+    "messagingSenderId": "YOUR_MESSAGING_SENDER_ID",
+    "appId": "YOUR_FIREBASE_APP_ID",
+    "apiKey": "YOUR_FIREBASE_API_KEY"
   },
   "cloud": {
-    "projectNumber": "1054806937473",
-    "serviceAccountEmail": "firebase-adminsdk-xxxxx@senior-mhealth-472007.iam.gserviceaccount.com",
-    "cloudRunServiceAccount": "cloud-run-sa@senior-mhealth-472007.iam.gserviceaccount.com"
+    "projectNumber": "YOUR_PROJECT_NUMBER",
+    "serviceAccountEmail": "YOUR_SERVICE_ACCOUNT@YOUR_PROJECT_ID.iam.gserviceaccount.com",
+    "cloudRunServiceAccount": "YOUR_CLOUD_RUN_SA@YOUR_PROJECT_ID.iam.gserviceaccount.com"
   },
   "database": {
-    "cloudSqlConnectionName": "senior-mhealth-472007:asia-northeast3:senior-mhealth-db",
-    "cloudSqlInstance": "senior-mhealth-db",
-    "bigQueryDataset": "senior_mhealth_analytics"
+    "cloudSqlConnectionName": "YOUR_PROJECT_ID:YOUR_REGION:YOUR_DB_INSTANCE",
+    "cloudSqlInstance": "YOUR_DB_INSTANCE",
+    "bigQueryDataset": "YOUR_ANALYTICS_DATASET"
   },
   "networking": {
-    "vpcConnector": "projects/senior-mhealth-472007/locations/asia-northeast3/connectors/senior-mhealth-connector",
-    "vpcConnectorName": "senior-mhealth-connector"
+    "vpcConnector": "projects/YOUR_PROJECT_ID/locations/YOUR_REGION/connectors/YOUR_VPC_CONNECTOR",
+    "vpcConnectorName": "YOUR_VPC_CONNECTOR"
   },
   "services": {
     "aiService": {
-      "name": "senior-mhealth-ai",
-      "url": "https://senior-mhealth-ai-du6z6zbl2a-du.a.run.app"
+      "name": "YOUR_AI_SERVICE_NAME",
+      "url": "https://YOUR_AI_SERVICE_URL.run.app"
     },
     "apiService": {
-      "name": "senior-mhealth-api",
-      "url": "https://senior-mhealth-api-1054806937473.asia-northeast3.run.app"
+      "name": "YOUR_API_SERVICE_NAME",
+      "url": "https://YOUR_API_SERVICE_URL.run.app"
     },
     "webApp": {
-      "url": "https://senior-mhealth.vercel.app"
+      "url": "https://YOUR_WEB_APP_URL.vercel.app"
     }
   },
   "monitoring": {
-    "grafanaWorkspace": "senior-mhealth-monitoring",
-    "alertManagerEmail": "admin@senior-mhealth.com"
+    "grafanaWorkspace": "YOUR_MONITORING_WORKSPACE",
+    "alertManagerEmail": "YOUR_ADMIN_EMAIL@example.com"
   },
   "deployment": {
     "environment": "production",
-    "dockerRegistry": "gcr.io/senior-mhealth-472007",
-    "artifactRegistry": "asia-northeast3-docker.pkg.dev/senior-mhealth-472007/senior-mhealth"
+    "dockerRegistry": "gcr.io/YOUR_PROJECT_ID",
+    "artifactRegistry": "YOUR_REGION-docker.pkg.dev/YOUR_PROJECT_ID/YOUR_REGISTRY_NAME"
   },
   "security": {
     "corsOrigins": [
-      "https://senior-mhealth.vercel.app",
+      "https://YOUR_WEB_APP_URL.vercel.app",
       "http://localhost:3000",
       "http://localhost:3001"
     ],
     "allowedDomains": [
-      "senior-mhealth-472007.firebaseapp.com",
-      "senior-mhealth.vercel.app"
+      "YOUR_PROJECT_ID.firebaseapp.com",
+      "YOUR_WEB_APP_URL.vercel.app"
     ]
   }
 }

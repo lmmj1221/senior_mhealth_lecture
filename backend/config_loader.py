@@ -35,32 +35,33 @@ def get_project_root() -> Path:
     return Path(__file__).parent.parent
 
 
-# 기본 설정 (fallback)
+# 기본 설정 (fallback) - 환경변수로 덮어써야 합니다!
+# ⚠️ 경고: 이 기본값은 플레이스홀더입니다. 실제 프로젝트 설정은 project.config.json 또는 환경변수로 제공해야 합니다.
 DEFAULT_CONFIG = {
     "project": {
-        "id": "senior-mhealth-472007",
-        "name": "Senior MHealth",
-        "region": "asia-northeast3",
-        "location": "asia-northeast3"
+        "id": "your-project-id",
+        "name": "Your Project Name",
+        "region": "us-central1",
+        "location": "us-central1"
     },
     "firebase": {
-        "projectId": "senior-mhealth-472007",
-        "storageBucket": "senior-mhealth-472007.firebasestorage.app",
-        "messagingSenderId": "1054806937473"
+        "projectId": "your-project-id",
+        "storageBucket": "your-project-id.firebasestorage.app",
+        "messagingSenderId": "your-messaging-sender-id"
     },
     "database": {
-        "cloudSqlConnectionName": "senior-mhealth-472007:asia-northeast3:senior-mhealth-db",
-        "cloudSqlInstance": "senior-mhealth-db",
-        "bigQueryDataset": "senior_mhealth_analytics"
+        "cloudSqlConnectionName": "your-project-id:us-central1:your-db-instance",
+        "cloudSqlInstance": "your-db-instance",
+        "bigQueryDataset": "your_analytics_dataset"
     },
     "services": {
         "aiService": {
-            "name": "senior-mhealth-ai",
-            "url": "https://senior-mhealth-ai-du6z6zbl2a-du.a.run.app"
+            "name": "your-ai-service",
+            "url": "https://your-ai-service.run.app"
         },
         "apiService": {
-            "name": "senior-mhealth-api",
-            "url": "https://senior-mhealth-api-1054806937473.asia-northeast3.run.app"
+            "name": "your-api-service",
+            "url": "https://your-api-service.run.app"
         }
     }
 }
@@ -161,6 +162,31 @@ def get_config(force_reload: bool = False) -> Dict[str, Any]:
 
     # 3. 환경 변수로 최종 덮어쓰기
     config = apply_env_overrides(config)
+
+    # ⚠️ 프로덕션 환경에서 플레이스홀더 값 검증
+    environment = os.getenv('ENVIRONMENT', 'development')
+    if environment == 'production' and config['project']['id'] == 'your-project-id':
+        error_msg = (
+            "❌ 프로젝트 설정 오류\n\n"
+            "환경변수가 설정되지 않았습니다. 다음 환경변수를 설정해주세요:\n\n"
+            "  • GOOGLE_CLOUD_PROJECT (또는 GCP_PROJECT_ID)\n"
+            "  • PROJECT_REGION\n"
+            "  • FIREBASE_STORAGE_BUCKET\n"
+            "  • CLOUD_SQL_CONNECTION_NAME\n"
+            "  • AI_SERVICE_URL\n"
+            "  • API_SERVICE_URL\n\n"
+            "또는 project.config.json 파일을 생성하세요.\n"
+            "자세한 내용은 SETUP_GUIDE.md를 참조하세요."
+        )
+        logger.error(error_msg)
+        raise ValueError(error_msg)
+
+    # 개발 환경에서 경고 출력
+    if environment == 'development' and config['project']['id'] == 'your-project-id':
+        logger.warning(
+            "⚠️ 경고: 플레이스홀더 설정이 사용되고 있습니다.\n"
+            "project.config.json 파일을 생성하거나 환경변수를 설정해주세요."
+        )
 
     _cached_config = config
     logger.info("설정 로드 완료")

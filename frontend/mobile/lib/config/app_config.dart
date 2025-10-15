@@ -142,43 +142,43 @@ class SecurityInfo {
 class AppConfig {
   static ProjectConfig? _cachedConfig;
 
-  // 기본 설정 (fallback)
+  // 기본 설정 (fallback) - 환경변수로 덮어써야 합니다!
+  // ⚠️ 경고: 이 기본값은 플레이스홀더입니다. 실제 프로젝트 설정은 project.config.json 또는 환경변수로 제공해야 합니다.
   static final ProjectConfig _defaultConfig = ProjectConfig(
     project: ProjectInfo(
-      id: 'senior-mhealth-472007',
-      name: 'Senior MHealth',
-      region: 'asia-northeast3',
-      location: 'asia-northeast3',
+      id: 'your-project-id',
+      name: 'Your Project Name',
+      region: 'us-central1',
+      location: 'us-central1',
     ),
     firebase: FirebaseInfo(
-      projectId: 'senior-mhealth-472007',
-      storageBucket: 'senior-mhealth-472007.firebasestorage.app',
-      messagingSenderId: '1054806937473',
-      appId: '1:1054806937473:android:xxxxxxxxxxxxxxxx',
-      apiKey: 'AIzaSyCxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      projectId: 'your-project-id',
+      storageBucket: 'your-project-id.firebasestorage.app',
+      messagingSenderId: 'your-messaging-sender-id',
+      appId: 'your-firebase-app-id',
+      apiKey: 'your-firebase-api-key',
     ),
     services: ServicesInfo(
       aiService: ServiceInfo(
-        name: 'senior-mhealth-ai',
-        url: 'https://senior-mhealth-ai-du6z6zbl2a-du.a.run.app',
+        name: 'your-ai-service',
+        url: 'https://your-ai-service.run.app',
       ),
       apiService: ServiceInfo(
-        name: 'senior-mhealth-api',
-        url: 'https://senior-mhealth-api-1054806937473.asia-northeast3.run.app',
+        name: 'your-api-service',
+        url: 'https://your-api-service.run.app',
       ),
       webApp: ServiceInfo(
-        name: 'senior-mhealth-web',
-        url: 'https://senior-mhealth.vercel.app',
+        name: 'your-web-app',
+        url: 'https://your-app.vercel.app',
       ),
     ),
     security: SecurityInfo(
       corsOrigins: [
-        'https://senior-mhealth.vercel.app',
         'http://localhost:3000',
+        'http://localhost:3001',
       ],
       allowedDomains: [
-        'senior-mhealth-472007.firebaseapp.com',
-        'senior-mhealth.vercel.app',
+        'localhost',
       ],
     ),
   );

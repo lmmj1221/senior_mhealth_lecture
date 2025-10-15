@@ -28,8 +28,9 @@ def initialize_firebase():
                 # 기본 인증 (Cloud Run에서 자동)
                 cred = credentials.ApplicationDefault()
 
+            # ⚠️ 경고: FIREBASE_PROJECT_ID 환경변수를 설정하지 않으면 플레이스홀더 값이 사용됩니다!
             firebase_admin.initialize_app(cred, {
-                'projectId': os.getenv("FIREBASE_PROJECT_ID", "senior-mhealth-472007")
+                'projectId': os.getenv("FIREBASE_PROJECT_ID", "your-project-id")
             })
 
             logger.info("Firebase Admin SDK 초기화 완료")
