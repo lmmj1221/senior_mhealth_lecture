@@ -37,6 +37,132 @@ Senior MHealth는 시니어를 위한 헬스케어 애플리케이션으로, 대
 - 하드코딩된 프로젝트 ID가 없으므로 반드시 자신의 ID로 설정해야 합니다
 - 환경 변수 파일(.env)과 서비스 계정 키는 절대 Git에 커밋하지 마세요
 
+## 🔄 다른 프로젝트로 복제하기
+
+이 프로젝트는 **범용 템플릿**으로 설계되어 있어, 누구나 자신의 GCP/Firebase 프로젝트로 복제할 수 있습니다.
+
+### 빠른 시작 (3단계)
+
+#### 1️⃣ 저장소 복제
+```bash
+git clone https://github.com/your-repo/Senior_MHealth.git
+cd Senior_MHealth
+```
+
+#### 2️⃣ 설정 자동화 스크립트 실행
+```bash
+# setup-project.sh가 자동으로:
+# - 프로젝트 ID 입력 받기
+# - GCP API 활성화
+# - .env 파일 생성
+# - Firebase 프로젝트 연결
+./setup-project.sh
+```
+
+**또는 수동 설정:**
+```bash
+# 1. 환경 변수 설정
+cp .env.example .env
+# .env 파일을 열어서 YOUR_ 값들을 실제 값으로 교체
+
+# 2. 프로젝트 설정 파일 생성
+cp project.config.template.json project.config.json
+# project.config.json을 열어서 YOUR_ 값들을 실제 값으로 교체
+
+# 3. Firebase 프로젝트 연결
+firebase use --add
+```
+
+#### 3️⃣ 의존성 설치 및 실행
+```bash
+# 백엔드
+cd backend/functions
+npm install
+
+# 프론트엔드 (선택)
+cd ../../frontend/web
+npm install
+npm run dev
+```
+
+### 📝 필수 환경 변수
+
+프로젝트가 작동하려면 다음 환경 변수를 설정해야 합니다:
+
+#### 🔑 필수 변수
+
+| 환경 변수 | 설명 | 획득 방법 |
+|-----------|------|-----------|
+| `GCP_PROJECT_ID` | GCP 프로젝트 ID | [GCP Console](https://console.cloud.google.com) > 프로젝트 선택 |
+| `GCP_PROJECT_NUMBER` | GCP 프로젝트 번호 | GCP Console > 프로젝트 설정 |
+| `GCP_REGION` | 배포 리전 | 예: `asia-northeast3` (서울), `us-central1` |
+| `FIREBASE_PROJECT_ID` | Firebase 프로젝트 ID | 보통 GCP_PROJECT_ID와 동일 |
+| `FIREBASE_API_KEY` | Firebase Web API 키 | [Firebase Console](https://console.firebase.google.com) > 프로젝트 설정 > 일반 |
+| `FIREBASE_AUTH_DOMAIN` | Firebase Auth 도메인 | Firebase Console > 프로젝트 설정 (자동 생성) |
+| `FIREBASE_STORAGE_BUCKET` | Storage 버킷 이름 | Firebase Console > Storage |
+| `FIREBASE_MESSAGING_SENDER_ID` | FCM Sender ID | Firebase Console > 프로젝트 설정 > Cloud Messaging |
+| `FIREBASE_APP_ID` | Firebase 앱 ID | Firebase Console > 프로젝트 설정 > 앱 추가 |
+
+#### 🔐 API 키 (선택)
+
+| 환경 변수 | 설명 | 획득 방법 |
+|-----------|------|-----------|
+| `GEMINI_API_KEY` | Google AI Gemini API 키 | [AI Studio](https://makersuite.google.com/app/apikey) |
+| `OPENAI_API_KEY` | OpenAI API 키 (선택) | [OpenAI Platform](https://platform.openai.com/api-keys) |
+| `ANTHROPIC_API_KEY` | Anthropic Claude API 키 (선택) | [Anthropic Console](https://console.anthropic.com) |
+
+#### ⚙️ 서비스 URL (배포 후 설정)
+
+| 환경 변수 | 설명 | 획득 방법 |
+|-----------|------|-----------|
+| `CLOUD_RUN_AI_URL` | AI 서비스 URL | 배포 후 Cloud Run Console에서 확인 |
+| `CLOUD_RUN_API_URL` | API 서비스 URL | 배포 후 Cloud Run Console에서 확인 |
+| `WEB_APP_URL` | 웹 앱 URL | Vercel 배포 후 확인 |
+
+### 📂 설정 파일 위치
+
+프로젝트는 다음 순서로 설정을 로드합니다:
+
+1. **환경 변수** (최우선)
+   - `.env` (로컬 개발)
+   - Cloud Run/Functions 환경 변수 (프로덕션)
+
+2. **설정 파일** (차선책)
+   - `project.config.json` (개인별, gitignore됨)
+   - `project.config.template.json` (템플릿, Git 추적됨)
+
+3. **기본값** (플레이스홀더)
+   - 코드 내 `DEFAULT_CONFIG` (개발 중 경고 출력)
+
+### ⚠️ 주의사항
+
+**절대 Git에 커밋하지 말아야 할 파일:**
+```
+.env                          # 환경 변수
+project.config.json           # 프로젝트 설정
+**/serviceAccountKey.json     # 서비스 계정 키
+**/service-account-key.json   # 서비스 계정 키
+auth_users.json               # 사용자 인증 정보
+```
+
+이 파일들은 이미 `.gitignore`에 포함되어 있습니다.
+
+### ✅ 설정 검증
+
+설정이 올바른지 확인하려면:
+
+```bash
+# 백엔드 설정 검증
+python backend/config_loader.py
+
+# 프론트엔드 개발 서버 실행 (환경 변수 확인)
+cd frontend/web
+npm run dev
+# 브라우저 콘솔에서 경고 메시지 확인
+```
+
+**프로덕션 배포 시:** 플레이스홀더 값이 있으면 에러가 발생하여 배포가 중단됩니다.
+
 ## 🏗️ 프로젝트 구조
 
 ```
