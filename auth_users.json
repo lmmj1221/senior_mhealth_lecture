@@ -1,0 +1,22 @@
+{"users": [
+{
+  "localId": "0PdDKCdNbST1JQEE8uz8S1j59Ko2",
+  "email": "newmind68@hs.ac.kr",
+  "emailVerified": false,
+  "passwordHash": "pc2hu9AQv3NNGW3V9xnzOiNVBsshD3PIkomGFqE1ohsRCVZG0ZxjlmRCZAhclODDwqULYFgJ7MDuMpxQEcDWlg==",
+  "salt": "N96U5FAP5SrpLA==",
+  "createdAt": "1760310420391",
+  "disabled": false,
+  "providerUserInfo": []
+},
+{
+  "localId": "7wll6D15YZgVrL7jEO1dJhyCUKG3",
+  "email": "test@test.com",
+  "emailVerified": false,
+  "passwordHash": "UHNDHt3Tz3hh899yme5SS53dKzx/1dz/dgQXgU4JanKXfjoGkWXy6CHiQ3IwEphDZTLTfuhUjrtOm4gEV+6Hvw==",
+  "salt": "9CZmo/sWNBwdcg==",
+  "createdAt": "1760321194227",
+  "disabled": false,
+  "customAttributes": "{\"role\":\"senior\",\"registeredAt\":1760321853866}",
+  "providerUserInfo": []
+}]}

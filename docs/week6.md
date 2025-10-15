@@ -4,6 +4,457 @@
 
 Next.js 웹 애플리케이션을 Vercel 플랫폼에 배포하고, 환경 변수 관리와 커스텀 도메인 설정을 학습합니다.
 
+---
+
+## ✅ 배포 사전 체크리스트 (Pre-deployment Checklist)
+
+Vercel 배포를 시작하기 전에 아래 항목들이 완료되었는지 확인하세요.
+
+### 🔐 1. Firebase 설정 완료 여부
+
+```bash
+# 확인 명령어
+ls -la .firebaserc
+ls -la backend/service-account-key.json
+cat .env | grep FIREBASE
+```
+
+- [ ] **Firebase 프로젝트 생성 완료**
+  - 프로젝트 ID: 
+  - 프로젝트 번호: 
+  - 리전: `asia-northeast3` (서울)
+
+- [ ] **Firebase 서비스 활성화 완료**
+  - Authentication (이메일/비밀번호 로그인)
+  - Firestore Database (Native 모드)
+  - Cloud Storage
+  - Cloud Functions
+  - Firebase Hosting (선택사항)
+
+- [ ] **Service Account Key 생성 및 저장**
+  - 파일 위치: `backend/service-account-key.json`
+  - 권한 설정: `600` (읽기 전용)
+  - 프로젝트 ID 일치 확인
+
+- [ ] **Firebase Web App 설정 완료**
+  - Firebase Console에서 웹 앱 등록
+  - Firebase Config 정보 확인:
+    ```
+    FIREBASE_API_KEY
+    FIREBASE_AUTH_DOMAIN
+    FIREBASE_PROJECT_ID
+    FIREBASE_STORAGE_BUCKET
+    FIREBASE_MESSAGING_SENDER_ID
+    FIREBASE_APP_ID
+    ```
+
+### 🗄️ 2. Firestore 데이터베이스 설정
+
+- [ ] **Firestore Rules 배포 완료**
+  ```bash
+  firebase deploy --only firestore:rules
+  ```
+  - 확인: [Firestore Rules Console](https://console.firebase.google.com/project/my-project-54928-b9704/firestore/rules)
+
+- [ ] **Firestore Indexes 배포 완료**
+  ```bash
+  firebase deploy --only firestore:indexes
+  ```
+  - 확인: [Firestore Indexes Console](https://console.firebase.google.com/project/my-project-54928-b9704/firestore/indexes)
+  - 필수 인덱스:
+    - `healthData`: `userId + createdAt`
+    - `healthData`: `seniorId + timestamp`
+
+- [ ] **Storage Rules 배포 완료**
+  ```bash
+  firebase deploy --only storage
+  ```
+  - 확인: [Storage Rules Console](https://console.firebase.google.com/project/my-project-54928-b9704/storage/rules)
+
+### ⚙️ 3. 환경 변수 파일 준비
+
+- [ ] **루트 .env 파일 존재 및 설정 완료**
+  ```bash
+  cat .env
+  ```
+  - GCP 프로젝트 정보
+  - Firebase 설정
+  - JWT Secret
+
+- [ ] **Backend 환경 변수 설정 완료**
+  - `backend/.env`
+  - `backend/functions/.env`
+  - `backend/ai-service/.env`
+  - `backend/api-service/.env`
+
+- [ ] **Frontend Web 환경 변수 설정 완료**
+  - `frontend/web/.env.local`
+  - 모든 Firebase Config 포함
+  - API URL 설정 완료
+
+### 🚀 4. Backend 서비스 배포 (선택사항, Week 4-5)
+
+- [ ] **Cloud Functions 배포 완료** (선택사항)
+  ```bash
+  firebase deploy --only functions
+  ```
+  - API Functions URL 확인
+  - Storage Trigger 작동 확인
+  - Firestore Trigger 작동 확인
+
+- [ ] **Cloud Run AI Service 배포 완료** 
+  ```bash
+  gcloud run services list
+  ```
+  - AI Service URL 확인
+  - Health Check 통과
+
+- [ ] **Cloud Run API Service 배포 완료**
+  ```bash
+  gcloud run services list
+  ```
+  - API Service URL 확인
+  - Health Check 통과
+
+### 💻 5. Frontend Web App 로컬 테스트
+
+- [ ] **의존성 설치 완료**
+  ```bash
+  cd frontend/web
+  npm install
+  ```
+
+- [ ] **로컬 개발 서버 실행 성공**
+  ```bash
+  npm run dev
+  # http://localhost:3000 접속 가능
+  ```
+
+- [ ] **Firebase 연결 테스트**
+  - Firebase Authentication 로그인 작동
+  - Firestore 데이터 읽기/쓰기 작동
+  - Storage 파일 업로드/다운로드 작동
+
+- [ ] **프로덕션 빌드 테스트**
+  ```bash
+  npm run build
+  npm start
+  # 빌드 에러 없음
+  ```
+
+- [ ] **테스트 데이터 생성 완료** ⭐ **중요!**
+  - Web App에서 표시할 데이터를 Firebase에 생성
+  - 테스트 사용자, Firestore 문서, Storage 파일 업로드
+  - **📖 [테스트 데이터 생성 가이드](./SETUP_TEST_DATA.md) 참조**
+  - 최소 요구사항:
+    - [ ] Authentication: `test@test.com` 사용자 생성
+    - [ ] Firestore: `users/{userId}/calls/{callId}` 문서 생성
+    - [ ] Storage: 음성 파일 업로드
+    - [ ] 데이터 확인: Firebase Console에서 검증
+
+### 🔑 6. Vercel 계정 및 CLI 준비
+
+- [ ] **Vercel 계정 생성**
+  - [Vercel 가입](https://vercel.com/signup)
+  - GitHub 계정 연동 (권장)
+
+- [ ] **Vercel CLI 설치**
+  ```bash
+  npm install -g vercel
+  vercel --version
+  ```
+
+- [ ] **Vercel 로그인 완료**
+  ```bash
+  vercel login
+  # 이메일 인증 완료
+  ```
+
+### 📋 7. Git Repository 준비 (자동 배포용)
+
+- [ ] **Git 저장소 초기화 완료**
+  ```bash
+  git status
+  # 현재 브랜치 확인
+  ```
+
+- [ ] **GitHub Repository 생성 (권장)**
+  - Public 또는 Private 저장소
+  - Vercel과 연동 예정
+
+- [ ] **.gitignore 설정 확인**
+  ```bash
+  cat .gitignore
+  ```
+  - `.env`, `.env.local` 포함 확인
+  - `service-account-key.json` 포함 확인
+  - `node_modules/` 포함 확인
+
+### 🔍 8. 최종 점검
+
+- [ ] **모든 민감한 정보 보호**
+  - Service Account Key는 Git에 커밋하지 않음
+  - .env 파일은 Git에 커밋하지 않음
+  - API Key는 환경 변수로만 관리
+
+- [ ] **Firebase 프로젝트 권한 확인**
+  - Firebase Console 접근 가능
+  - 프로젝트 편집 권한 보유
+
+- [ ] **네트워크 및 API 접근 테스트**
+  ```bash
+  # Firebase 접속 테스트
+  curl https://firestore.googleapis.com/
+
+  # Cloud Run 접속 테스트 (배포된 경우)
+  curl YOUR_CLOUD_RUN_URL/health
+  ```
+
+---
+
+## 🚨 체크리스트 미완료 시 대응
+
+각 섹션에서 체크되지 않은 항목이 있다면 해당 Week로 돌아가서 완료하세요:
+
+- **Firebase 설정**: Week 3 참조
+- **Firestore 설정**: Week 5 참조
+- **환경 변수**: `SETUP_GUIDE.md` 참조
+- **Backend 배포**: Week 4-5 참조
+- **Frontend 준비**: 아래 Step 1부터 진행
+
+---
+
+## ⚡ 빠른 확인 스크립트
+
+모든 설정을 빠르게 확인하려면:
+
+```bash
+# 프로젝트 루트에서 실행
+echo "=== Firebase 설정 확인 ==="
+test -f .firebaserc && echo "✅ .firebaserc 존재" || echo "❌ .firebaserc 없음"
+test -f backend/service-account-key.json && echo "✅ Service Account Key 존재" || echo "❌ Service Account Key 없음"
+
+echo -e "\n=== 환경 변수 확인 ==="
+test -f .env && echo "✅ 루트 .env 존재" || echo "❌ 루트 .env 없음"
+test -f frontend/web/.env.local && echo "✅ Web .env.local 존재" || echo "❌ Web .env.local 없음"
+
+echo -e "\n=== Firebase 배포 확인 ==="
+firebase deploy --only firestore:rules --dry-run 2>/dev/null && echo "✅ Firestore Rules 유효" || echo "❌ Firestore Rules 문제"
+
+echo -e "\n=== 테스트 데이터 확인 ==="
+test -f create_test_call.js && echo "✅ 테스트 스크립트 존재" || echo "⚠️  테스트 스크립트 없음 (SETUP_TEST_DATA.md 참조)"
+test -f auth_users.json && echo "✅ 테스트 사용자 확인됨" || echo "⚠️  테스트 사용자 미확인"
+
+echo -e "\n=== Frontend 빌드 테스트 ==="
+cd frontend/web && npm run build 2>/dev/null && echo "✅ 빌드 성공" || echo "❌ 빌드 실패"
+
+echo -e "\n=== Vercel CLI 확인 ==="
+which vercel >/dev/null 2>&1 && echo "✅ Vercel CLI 설치됨" || echo "❌ Vercel CLI 미설치"
+```
+
+**모든 항목이 ✅로 표시되면 Vercel 배포를 시작할 수 있습니다!**
+
+---
+
+## 📝 테스트 데이터 생성 (필수!)
+
+Web App을 배포하기 전에 **반드시** 테스트 데이터를 생성해야 합니다.
+
+### 왜 필요한가?
+
+Vercel에 배포한 Web App은 Firebase에서 데이터를 읽어와 화면에 표시합니다.
+테스트 데이터가 없으면 **빈 화면만 보이게 됩니다!**
+
+### 생성 방법
+
+**📖 [테스트 데이터 생성 가이드](./SETUP_TEST_DATA.md)**를 따라 진행하세요.
+
+### 생성할 데이터
+
+1. **Authentication**: `test@test.com` / `test1234`
+2. **Firestore**: 통화 기록 문서 (calls collection)
+3. **Storage**: 음성 파일 (1.59 MB)
+
+### 예상 소요 시간
+
+약 10-15분 (스크립트 작성 및 실행)
+
+---
+
+## 🌐 Web App이란? (배포하기 전에 이해하기)
+
+### 프로젝트의 전체 구조
+
+```
+Senior MHealth 프로젝트
+├─────────────────────────────────────────────────┐
+│                                                 │
+│  📱 Mobile App (Flutter)                        │
+│  ┌───────────────────────────────────┐          │
+│  │ 노인/보호자가 스마트폰에서 사용      │          │
+│  │ • 음성 통화 녹음                   │          │
+│  │ • 건강 데이터 입력                 │          │
+│  │ • 알림 수신                        │          │
+│  │ • 실시간 모니터링                  │          │
+│  └───────────────────────────────────┘          │
+│                    ↓ 데이터 전송                 │
+│             [Firebase Backend]                  │
+│         (Firestore, Storage, Functions)         │
+│                    ↓ 데이터 조회                 │
+│  💻 Web App (Next.js) ← 이번 Week에 배포!       │
+│  ┌───────────────────────────────────┐          │
+│  │ 의료진/관리자가 브라우저에서 사용   │          │
+│  │ • 📊 대시보드 (환자 현황)          │          │
+│  │ • 📈 데이터 시각화 (차트/그래프)   │          │
+│  │ • 👥 환자 관리                     │          │
+│  │ • 📝 리포트 생성 (PDF 다운로드)    │          │
+│  │ • ⚙️ 시스템 설정                   │          │
+│  │ • 🔔 알림 관리                     │          │
+│  └───────────────────────────────────┘          │
+│                                                 │
+└─────────────────────────────────────────────────┘
+```
+
+### Web App vs Mobile App 비교
+
+| 구분 | Mobile App | Web App |
+|------|-----------|---------|
+| **플랫폼** | Android/iOS | 브라우저 (Chrome, Safari 등) |
+| **사용자** | 노인, 보호자 | 의료진, 관리자 |
+| **주요 기능** | 데이터 입력, 통화 | 데이터 분석, 관리 |
+| **화면 크기** | 작음 (스마트폰) | 큼 (PC, 노트북) |
+| **설치** | 필요 (앱스토어) | 불필요 (URL 접속) |
+| **사용 장소** | 이동 중, 집 | 병원, 사무실 |
+| **데이터** | 생성/입력 | 조회/분석 |
+| **배포** | 앱스토어 | **Vercel** ← 이번 주차! |
+
+### Web App의 핵심 역할
+
+```
+┌─────────────────────────────────────────────────────┐
+│            Web App = 관리자 대시보드                  │
+├─────────────────────────────────────────────────────┤
+│                                                     │
+│  1. 📊 실시간 현황 모니터링                          │
+│     ┌──────────────────────────────────┐           │
+│     │ 오늘의 통화: 15건                │           │
+│     │ AI 분석 완료: 12건               │           │
+│     │ 긴급 알림: 0건                   │           │
+│     └──────────────────────────────────┘           │
+│                                                     │
+│  2. 👥 환자 관리                                     │
+│     • 환자 목록 조회                                │
+│     • 개인별 건강 기록 확인                         │
+│     • 통화 히스토리 분석                            │
+│                                                     │
+│  3. 📈 데이터 시각화                                 │
+│     • 건강 지표 차트                                │
+│     • 트렌드 분석 그래프                            │
+│     • AI 분석 결과 표시                             │
+│                                                     │
+│  4. 📝 리포트 생성                                   │
+│     • 월간 통계 리포트                              │
+│     • PDF 다운로드                                  │
+│     • 보고서 자동 생성                              │
+│                                                     │
+└─────────────────────────────────────────────────────┘
+```
+
+### 실제 사용 시나리오
+
+**시나리오 1: 일상 모니터링**
+```
+09:00 - 노인이 Mobile App으로 "안부 통화" 📱
+        → 음성 녹음 자동 업로드
+        → AI가 감정/건강 상태 분석
+
+09:30 - 의료진이 Web App으로 확인 💻
+        → 브라우저에서 http://your-app.vercel.app 접속
+        → 대시보드에서 "홍길동님 통화 완료 ✅" 확인
+        → AI 분석 결과: "정상 범위"
+```
+
+**시나리오 2: 이상 신호 감지**
+```
+14:30 - Mobile App이 이상 신호 감지 📱
+        → "목소리 톤이 평소와 다름"
+        → 자동 알림 발송
+
+14:35 - Web App에 긴급 알림 표시 💻 🔔
+        → 의료진이 브라우저에서 즉시 확인
+        → 상세 차트 분석
+        → 최근 일주일 데이터 비교
+        → 필요시 즉시 연락
+```
+
+**시나리오 3: 월간 리포트**
+```
+매월 말 - 관리자가 Web App에서 💻
+         → "리포트 생성" 버튼 클릭
+         → 모든 환자 통계 자동 집계
+         → PDF 다운로드
+         → 보건소/병원에 제출
+```
+
+---
+
+## 🚀 왜 Vercel로 배포하는가?
+
+### Vercel = Web App을 인터넷에 올리는 플랫폼
+
+```
+로컬 개발 환경                       Vercel 배포
+────────────────                    ──────────────
+http://localhost:3000      →        https://your-app.vercel.app
+
+• 본인 컴퓨터에서만 접속             • 전 세계 어디서든 접속 가능
+• 개발/테스트용                      • 실제 서비스용
+• 컴퓨터 꺼지면 안됨                 • 24시간 작동
+```
+
+### Vercel 배포의 장점
+
+```
+┌─────────────────────────────────────────────┐
+│  Vercel이 자동으로 해주는 것들             │
+├─────────────────────────────────────────────┤
+│  ✅ 서버 관리 (자동)                        │
+│  ✅ HTTPS 보안 인증서 (무료)               │
+│  ✅ 전 세계 CDN (빠른 속도)                │
+│  ✅ 자동 스케일링 (사용자 많아져도 OK)     │
+│  ✅ Git 연동 (코드 푸시하면 자동 배포)     │
+│  ✅ 프리뷰 URL (테스트용 주소 자동 생성)   │
+└─────────────────────────────────────────────┘
+```
+
+### 배포 프로세스
+
+```
+1. 로컬에서 개발
+   frontend/web/
+   ├── .env.local  ← Firebase 설정
+   ├── src/
+   └── package.json
+
+2. Vercel 연결
+   vercel login
+   vercel --prod
+
+3. 환경 변수 설정 (Vercel Dashboard)
+   NEXT_PUBLIC_FIREBASE_API_KEY=...
+   NEXT_PUBLIC_FIREBASE_PROJECT_ID=...
+
+4. 배포 완료! 🎉
+   https://senior-mhealth.vercel.app
+
+5. 전 세계 어디서든 접속 가능
+   의료진이 병원에서
+   관리자가 사무실에서
+   → 브라우저로 접속하여 환자 데이터 확인
+```
+
+---
+
 ## 📚 핵심 개념
 
 ### 1. Vercel 플랫폼 이해
