@@ -16,8 +16,14 @@
 ## API 개요
 
 ### Base URL
-- **개발환경**: `http://localhost:5001/senior-mhealth-472007/us-central1`
-- **프로덕션**: `https://us-central1-senior-mhealth-472007.cloudfunctions.net`
+- **개발환경**: `http://localhost:5001/${GCP_PROJECT_ID}/${GCP_REGION}`
+  - 예시: `http://localhost:5001/your-project-id/us-central1`
+- **프로덕션**: `https://${GCP_REGION}-${GCP_PROJECT_ID}.cloudfunctions.net`
+  - 예시: `https://us-central1-your-project-id.cloudfunctions.net`
+
+> ⚠️ **중요**: `${GCP_PROJECT_ID}`와 `${GCP_REGION}`은 각자의 GCP 프로젝트 설정값으로 교체하세요.
+> - GCP_PROJECT_ID: Firebase Console > 프로젝트 설정에서 확인
+> - GCP_REGION: Firebase Functions 배포 리전 (기본값: us-central1 또는 asia-northeast3)
 
 ### 공통 응답 형식
 ```json

@@ -4930,7 +4930,7 @@ analysis = {                            # 📊 최종 제품
 
 **공장 출입증 (인증):**
 ```
-GCP_PROJECT_ID = "senior-mhealth-lecture"  # 🏭 공장 출입 허가증
+GCP_PROJECT_ID = "your-gcp-project-id"  # 🏭 공장 출입 허가증 (실제 프로젝트 ID로 교체)
 GOOGLE_APPLICATION_CREDENTIALS = "key.json" # 🔐 보안 키카드
 ```
 
@@ -4944,7 +4944,7 @@ GOOGLE_APPLICATION_CREDENTIALS = "key.json" # 🔐 보안 키카드
 async def health_check():
     return HealthResponse(
         status="healthy",
-        service="senior-mhealth-ai-simple",
+        service=os.getenv("SERVICE_NAME", "ai-service"),  # 환경 변수로 설정
         version="2.0.0"
     )
 ```
@@ -4954,7 +4954,7 @@ async def health_check():
 ```json
 {
   "status": "healthy",
-  "service": "senior-mhealth-ai-simple",
+  "service": "ai-service",  # SERVICE_NAME 환경 변수로 설정된 값
   "version": "2.0.0"
 }
 ```
@@ -4987,7 +4987,7 @@ async def detailed_health():
     "gcp_project": "configured"
   },
   "environment": {
-    "project_id": "senior-mhealth-lecture",
+    "project_id": "your-gcp-project-id",  # 실제 환경 변수 GCP_PROJECT_ID 값이 표시됨
     "region": "asia-northeast3"
   }
 }
@@ -5278,7 +5278,7 @@ if not validation["is_valid"]:
 #### 1. 서버 실행
 ```bash
 # 환경변수 설정
-export GCP_PROJECT_ID=senior-mhealth-lecture
+export GCP_PROJECT_ID=your-gcp-project-id  # 실제 GCP 프로젝트 ID로 교체
 export GCP_LOCATION=asia-northeast3
 
 # 의존성 설치

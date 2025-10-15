@@ -161,12 +161,12 @@ Artifact Registry 구조:
 [REGION]-docker.pkg.dev/[PROJECT-ID]/[REPOSITORY]/[IMAGE]:[TAG]
 
 예시 (신규):
-asia-northeast3-docker.pkg.dev/senior-mhealth-lee/backend/ai-service:v1
+asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend/ai-service:v1
 └────────────┘└──────────────┘└──────────────┘└──────┘└────────┘└─┘
     리전        도메인            프로젝트 ID      저장소    이미지    태그
 
 예시:
-asia-northeast3-docker.pkg.dev/senior-mhealth-lee/backend/ai-service:v1
+asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend/ai-service:v1
 ```
 
 **💡 클라우드 창고로 이해하기:**
@@ -289,7 +289,7 @@ docker --version
 
 # 2. 현재 프로젝트 확인
 gcloud config get-value project
-# 출력: senior-mhealth-lee
+# 출력: your-project-id
 
 # 3. 필요한 API 활성화
 gcloud services enable run.googleapis.com
@@ -326,14 +326,14 @@ Google Cloud에서 Cloud Run과 Docker를 위한 환경을 설정해주세요.
 
 2. **기존 프로젝트 선택**
    - 좌측 상단의 프로젝트 선택 드롭다운 클릭
-   - 이미 생성한 GCP 프로젝트 선택 (예: `senior-mhealth-lee`)
+   - 이미 생성한 GCP 프로젝트 선택 (예: `your-project-id`)
    - 새 프로젝트가 아닌 **기존 프로젝트를 반드시 선택**해야 함
 
 3. **API 키 생성**
    - 좌측 메뉴에서 "Get API key" 클릭
    - "Create API key" 버튼 클릭
    - "Create API key in existing project" 선택
-   - 본인의 GCP 프로젝트 선택 (예: `senior-mhealth-lee`)
+   - 본인의 GCP 프로젝트 선택 (예: `your-project-id`)
    - API 키가 생성되면 복사하여 안전한 곳에 저장
 
 4. **API 키 확인**
@@ -377,8 +377,8 @@ cat > .env << EOF
 GOOGLE_AI_API_KEY=YOUR_GEMINI_API_KEY_HERE
 
 # 프로젝트 설정
-GOOGLE_CLOUD_PROJECT=senior-mhealth-lee
-GCP_PROJECT_ID=senior-mhealth-lee
+GOOGLE_CLOUD_PROJECT=your-project-id
+GCP_PROJECT_ID=your-project-id
 
 # 모델 설정 (Gemini 2.0 사용 가능)
 MODEL_NAME=gemini-2.0-flash-exp
@@ -407,7 +407,7 @@ AI Service를 위한 환경을 설정해주세요.
    - Speech-to-Text API: gcloud services enable speech.googleapis.com
 3. .env 파일을 만들고 다음 설정을 추가해주세요:
    - GOOGLE_AI_API_KEY=발급받은_실제_API_키
-   - GOOGLE_CLOUD_PROJECT=senior-mhealth-lee
+   - GOOGLE_CLOUD_PROJECT=your-project-id
    - MODEL_NAME=gemini-2.0-flash-exp
    - ENVIRONMENT=production
    - PORT=8081
@@ -513,9 +513,10 @@ AI Service Docker 이미지를 빌드하고 Artifact Registry에 푸시해주세
 # 환경변수 설정 (실제 API 키로 교체 필요)
 export GOOGLE_AI_API_KEY="YOUR_ACTUAL_API_KEY_HERE"
 export PROJECT_ID=$(gcloud config get-value project)
+export AI_SERVICE_NAME="ai-service"
 
 # Cloud Run 배포 (Google AI Studio API 키 포함)
-gcloud run deploy senior-mhealth-ai \
+gcloud run deploy ${AI_SERVICE_NAME} \
   --image asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend/ai-service:v1 \
   --platform managed \
   --region asia-northeast3 \
@@ -528,7 +529,7 @@ gcloud run deploy senior-mhealth-ai \
   --set-env-vars="GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY},GOOGLE_CLOUD_PROJECT=${PROJECT_ID},MODEL_NAME=gemini-2.0-flash-exp,ENVIRONMENT=production,LOG_LEVEL=INFO"
 
 # 배포 성공 시 URL 저장
-export AI_SERVICE_URL=$(gcloud run services describe senior-mhealth-ai \
+export AI_SERVICE_URL=$(gcloud run services describe ${AI_SERVICE_NAME} \
   --platform managed \
   --region asia-northeast3 \
   --format 'value(status.url)')
@@ -549,9 +550,10 @@ AI Service를 Cloud Run에 배포해주세요.
 1. 먼저 환경변수를 설정해주세요:
    - export GOOGLE_AI_API_KEY="발급받은_실제_API_키"
    - export PROJECT_ID=$(gcloud config get-value project)
+   - export AI_SERVICE_NAME="ai-service"
 
 2. Cloud Run 배포 설정:
-   - 서비스 이름: senior-mhealth-ai
+   - 서비스 이름: ${AI_SERVICE_NAME}
    - 리전: asia-northeast3
    - 메모리: 2Gi, CPU: 2
    - 타임아웃: 300초, 최대 인스턴스: 5
@@ -755,8 +757,11 @@ Cloud Build를 사용하여 API Service 이미지를 빌드해주세요.
 ### 2.4 Cloud Run 배포 🤖
 
 ```bash
+# 환경변수 설정
+export API_SERVICE_NAME="api-service"
+
 # Cloud Build로 빌드한 이미지 사용
-gcloud run deploy senior-mhealth-api \
+gcloud run deploy ${API_SERVICE_NAME} \
   --image asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend/api-service:latest \
   --platform managed \
   --region asia-northeast3 \
@@ -768,7 +773,7 @@ gcloud run deploy senior-mhealth-api \
   --set-env-vars="GOOGLE_CLOUD_PROJECT=${PROJECT_ID},AI_SERVICE_URL=${AI_SERVICE_URL}"
 
 # URL 저장
-export API_SERVICE_URL=$(gcloud run services describe senior-mhealth-api \
+export API_SERVICE_URL=$(gcloud run services describe ${API_SERVICE_NAME} \
   --platform managed \
   --region asia-northeast3 \
   --format 'value(status.url)')
@@ -781,14 +786,16 @@ echo "API Service URL: $API_SERVICE_URL"
 ```
 API Service를 Cloud Run에 배포해주세요.
 
-1. 서비스 이름: senior-mhealth-api
-2. Cloud Build로 빌드한 이미지를 사용해주세요
-3. 리전: asia-northeast3
-4. 메모리: 1Gi, CPU: 1
-5. 타임아웃: 60초, 최대 인스턴스: 10
-6. 인증 없이 접근 가능하도록 설정
-7. 환경 변수로 프로젝트 ID와 AI Service URL을 설정해주세요
-8. 배포된 서비스 URL을 확인해주세요
+1. 환경변수를 설정해주세요:
+   - export API_SERVICE_NAME="api-service"
+2. 서비스 이름: ${API_SERVICE_NAME}
+3. Cloud Build로 빌드한 이미지를 사용해주세요
+4. 리전: asia-northeast3
+5. 메모리: 1Gi, CPU: 1
+6. 타임아웃: 60초, 최대 인스턴스: 10
+7. 인증 없이 접근 가능하도록 설정
+8. 환경 변수로 프로젝트 ID와 AI Service URL을 설정해주세요
+9. 배포된 서비스 URL을 확인해주세요
 ```
 
 ### 2.5 서비스 검증 🤖
@@ -874,8 +881,8 @@ firebase functions:config:get
 
 1. [Cloud Run Console](https://console.cloud.google.com/run) 접속
 2. 서비스 목록 확인:
-   - senior-mhealth-ai
-   - senior-mhealth-api
+   - ai-service (AI Service)
+   - api-service (API Service)
 3. 각 서비스 클릭하여 확인:
    - **메트릭**: 요청 수, 응답 시간, 에러율
    - **로그**: 실시간 로그 스트리밍
@@ -889,13 +896,13 @@ gcloud run services list --platform managed --region asia-northeast3
 
 # AI Service 로그 확인
 gcloud logging read "resource.type=cloud_run_revision \
-  AND resource.labels.service_name=senior-mhealth-ai" \
+  AND resource.labels.service_name=${AI_SERVICE_NAME}" \
   --limit 20 \
   --format json | jq '.[] | {timestamp: .timestamp, message: .textPayload}'
 
 # API Service 로그 확인
 gcloud logging read "resource.type=cloud_run_revision \
-  AND resource.labels.service_name=senior-mhealth-api" \
+  AND resource.labels.service_name=${API_SERVICE_NAME}" \
   --limit 20 \
   --format json | jq '.[] | {timestamp: .timestamp, message: .textPayload}'
 
@@ -921,7 +928,7 @@ docker build -t asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend/ai-service:
 docker push asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend/ai-service:v2
 
 # 새 리비전 배포 (API 키 환경변수 포함)
-gcloud run deploy senior-mhealth-ai \
+gcloud run deploy ${AI_SERVICE_NAME} \
   --image asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend/ai-service:v2 \
   --platform managed \
   --region asia-northeast3 \
@@ -955,7 +962,7 @@ gcloud builds submit \
   --region asia-northeast3 .
 
 # 새 리비전 배포
-gcloud run deploy senior-mhealth-api \
+gcloud run deploy ${API_SERVICE_NAME} \
   --image asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend/api-service:v2 \
   --platform managed \
   --region asia-northeast3
@@ -977,7 +984,7 @@ API Service를 새 버전으로 업데이트해주세요.
 ```bash
 
 # 트래픽 분할 (카나리 배포)
-gcloud run services update-traffic senior-mhealth-ai \
+gcloud run services update-traffic ${AI_SERVICE_NAME} \
   --to-revisions=LATEST=10 \
   --platform managed \
   --region asia-northeast3
@@ -1215,7 +1222,7 @@ gcloud secrets versions access latest --secret="gemini-api-key" | wc -c
 # 원본 API 키와 동일한 길이여야 함 (39자)
 
 # 5단계: Cloud Run에서 Secret Manager 연결
-gcloud run deploy senior-mhealth-ai \
+gcloud run deploy ${AI_SERVICE_NAME} \
   --image asia-northeast3-docker.pkg.dev/${PROJECT_ID}/backend/ai-service:v1 \
   --platform managed \
   --region asia-northeast3 \

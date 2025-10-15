@@ -190,24 +190,27 @@ class GoogleAIAnalyzer:
 
 ```bash
 # API 키 길이 확인 (39자여야 함)
-echo -n "AIzaSyDOU6LpCLH2bxjXLq34T-VwSuRdCQOH_BE" | wc -c
+echo -n "YOUR_GOOGLE_AI_API_KEY" | wc -c
 # 출력: 39
 
 # Secret Manager 활성화
 gcloud services enable secretmanager.googleapis.com
 
 # Secret 생성 (줄바꿈 없이)
-echo -n "AIzaSyDOU6LpCLH2bxjXLq34T-VwSuRdCQOH_BE" | \
+echo -n "YOUR_GOOGLE_AI_API_KEY" | \
   gcloud secrets create GOOGLE_AI_API_KEY \
   --data-file=- \
   --replication-policy="automatic" \
-  --project="senior-mhealth-lee"
+  --project="${GCP_PROJECT_ID}"
 
 # Cloud Run 서비스 계정에 권한 부여
+# 먼저 프로젝트 번호 확인
+PROJECT_NUMBER=$(gcloud projects describe ${GCP_PROJECT_ID} --format="value(projectNumber)")
+
 gcloud secrets add-iam-policy-binding GOOGLE_AI_API_KEY \
-  --member="serviceAccount:716250412647-compute@developer.gserviceaccount.com" \
+  --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
   --role="roles/secretmanager.secretAccessor" \
-  --project="senior-mhealth-lee"
+  --project="${GCP_PROJECT_ID}"
 ```
 
 ### Step 5: Cloud Run 배포
@@ -218,10 +221,10 @@ gcloud secrets add-iam-policy-binding GOOGLE_AI_API_KEY \
 cd backend/ai-service
 
 # 이미지 빌드
-docker build -t asia-northeast3-docker.pkg.dev/senior-mhealth-lee/ai-service/ai-service:speech-diarization .
+docker build -t asia-northeast3-docker.pkg.dev/${GCP_PROJECT_ID}/ai-service/ai-service:speech-diarization .
 
 # 이미지 푸시
-docker push asia-northeast3-docker.pkg.dev/senior-mhealth-lee/ai-service/ai-service:speech-diarization
+docker push asia-northeast3-docker.pkg.dev/${GCP_PROJECT_ID}/ai-service/ai-service:speech-diarization
 ```
 
 #### 5.2 Cloud Run 배포
@@ -229,13 +232,14 @@ docker push asia-northeast3-docker.pkg.dev/senior-mhealth-lee/ai-service/ai-serv
 ```bash
 # Secret Manager를 사용한 배포
 gcloud run deploy ai-service-speaker \
-  --image asia-northeast3-docker.pkg.dev/senior-mhealth-lee/ai-service/ai-service:speech-diarization \
+  --image asia-northeast3-docker.pkg.dev/${GCP_PROJECT_ID}/ai-service/ai-service:speech-diarization \
   --region asia-northeast3 \
   --platform managed \
   --allow-unauthenticated \
   --memory 512Mi \
   --set-env-vars "USE_GOOGLE_AI=true,MODEL_NAME=gemini-2.0-flash-exp" \
-  --set-secrets "GOOGLE_AI_API_KEY=GOOGLE_AI_API_KEY:latest,GEMINI_API_KEY=GOOGLE_AI_API_KEY:latest"
+  --set-secrets "GOOGLE_AI_API_KEY=GOOGLE_AI_API_KEY:latest,GEMINI_API_KEY=GOOGLE_AI_API_KEY:latest" \
+  --project="${GCP_PROJECT_ID}"
 ```
 
 ## 🔍 테스트 및 검증
@@ -244,7 +248,10 @@ gcloud run deploy ai-service-speaker \
 
 ```bash
 # 텍스트 분석 테스트 (화자 분리 포함)
-curl -X POST https://ai-service-speaker-716250412647.asia-northeast3.run.app/analyze \
+# 먼저 배포된 서비스 URL 확인
+SERVICE_URL=$(gcloud run services describe ai-service-speaker --region=asia-northeast3 --format="value(status.url)")
+
+curl -X POST ${SERVICE_URL}/analyze \
   -H "Content-Type: application/json" \
   -d '{
     "text": "엄마, 오늘은 좀 어떠세요? 괜찮아. 아들아, 너는 잘 지내니? 응, 잘 지내고 있어요.",

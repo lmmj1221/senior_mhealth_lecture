@@ -147,6 +147,11 @@ auth_users.json               # 사용자 인증 정보
 
 이 파일들은 이미 `.gitignore`에 포함되어 있습니다.
 
+> 참고 (서비스 계정 키 관리):
+> - 레포에서는 같은 서비스 계정 키(JSON)를 여러 이름/위치로 복사해서 사용하는 경우가 있습니다. (예: `backend/service-account-key.json`, 루트의 `serviceAccountKey.json`, CI에서 쓰는 `firebase-service-account.json` 등)
+> - 권장: 한 곳(canonical)에서 키를 보관하고 배포 스크립트나 CI에서 필요한 위치로 안전하게 복사하거나, `GOOGLE_APPLICATION_CREDENTIALS` 환경변수 또는 CI Secret으로 키를 주입하세요.
+> - 절대 Git에 커밋하지 마시고, 권한은 최소 권한 원칙을 적용하세요.
+
 ### ✅ 설정 검증
 
 설정이 올바른지 확인하려면:

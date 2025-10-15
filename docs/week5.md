@@ -163,7 +163,7 @@ gcloud services enable cloudbuild.googleapis.com
 ### 1.1 Firestore 초기화 👤
 
 1. [Firebase Console](https://console.firebase.google.com) 접속
-2. 프로젝트 선택: senior-mhealth-lee
+2. 프로젝트 선택: your-project-id
 3. Firestore Database 메뉴 클릭
 4. "데이터베이스 만들기" 클릭
 5. 위치 선택: asia-northeast3 (서울)
@@ -866,11 +866,11 @@ EOF
 # .env 파일 생성 (Functions용)
 cat > .env << EOF
 # Cloud Run Services - Storage 트리거에서 사용
-CLOUD_RUN_AI_URL=https://senior-mhealth-ai-xxxxx-an.a.run.app
-CLOUD_RUN_API_URL=https://senior-mhealth-api-xxxxx-an.a.run.app
+CLOUD_RUN_AI_URL=https://your-ai-service-xxxxx-an.a.run.app
+CLOUD_RUN_API_URL=https://your-api-service-xxxxx-an.a.run.app
 
 # Firebase 설정
-FIREBASE_PROJECT_ID=senior-mhealth-lee
+FIREBASE_PROJECT_ID=your-project-id
 EOF
 
 # Firebase Functions 환경 변수 설정
@@ -907,8 +907,8 @@ npm install
 firebase emulators:start --only functions,firestore
 
 # 다른 터미널에서 테스트
-# Health check
-curl http://localhost:5001/senior-mhealth-lee/asia-northeast3/api/health
+# Health check (your-project-id를 실제 프로젝트 ID로 변경)
+curl http://localhost:5001/your-project-id/asia-northeast3/api/health
 
 # 테스트 데이터 추가 (인증 필요)
 # 먼저 테스트 토큰 생성 필요
@@ -940,7 +940,7 @@ firebase deploy --only functions
 firebase functions:list
 
 # 배포된 URL 확인
-# https://asia-northeast3-senior-mhealth-lee.cloudfunctions.net/api
+# https://asia-northeast3-your-project-id.cloudfunctions.net/api
 ```
 
 ### 3.3 배포 검증 👤
@@ -952,8 +952,8 @@ firebase functions:list
 ### 3.4 API 테스트 🤖
 
 ```bash
-# Functions URL 설정
-export FUNCTIONS_URL="https://asia-northeast3-senior-mhealth-lee.cloudfunctions.net/api"
+# Functions URL 설정 (your-project-id를 실제 프로젝트 ID로 변경)
+export FUNCTIONS_URL="https://asia-northeast3-your-project-id.cloudfunctions.net/api"
 
 # Health check
 curl ${FUNCTIONS_URL}/health
@@ -996,7 +996,8 @@ firebase functions:log --only processVoiceFile
 
 ```bash
 # Cloud Run 서비스 환경 변수 업데이트
-gcloud run services update senior-mhealth-api \
+# (API_SERVICE_NAME은 week4에서 정의한 환경변수)
+gcloud run services update ${API_SERVICE_NAME} \
   --platform managed \
   --region asia-northeast3 \
   --update-env-vars="FUNCTIONS_URL=${FUNCTIONS_URL}"

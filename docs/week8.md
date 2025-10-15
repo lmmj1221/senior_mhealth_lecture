@@ -53,21 +53,21 @@
 
 ```bash
 # 프로젝트 설정 확인
-export PROJECT_ID=senior-mhealth-lee
+export PROJECT_ID=$(gcloud config get-value project)
 gcloud config set project $PROJECT_ID
 
 # Cloud Run 서비스 URL 가져오기
-export AI_SERVICE_URL=$(gcloud run services describe senior-mhealth-ai \
+export AI_SERVICE_URL=$(gcloud run services describe ${AI_SERVICE_NAME} \
   --region asia-northeast3 --format 'value(status.url)')
 
-export API_SERVICE_URL=$(gcloud run services describe senior-mhealth-api \
+export API_SERVICE_URL=$(gcloud run services describe ${API_SERVICE_NAME} \
   --region asia-northeast3 --format 'value(status.url)')
 
 # Cloud Functions URL
 export FUNCTIONS_URL=https://asia-northeast3-$PROJECT_ID.cloudfunctions.net/api
 
 # Vercel Web App URL
-export WEB_APP_URL=https://senior-mhealth-lee.vercel.app
+export WEB_APP_URL=https://your-project-name.vercel.app
 
 echo "=== 서비스 URL 목록 ==="
 echo "AI Service: $AI_SERVICE_URL"
@@ -181,7 +181,7 @@ fi
 **시나리오 1: 신규 사용자 가입 및 설정**
 
 1. **웹앱에서 회원가입**:
-   - https://senior-mhealth-lee.vercel.app 접속
+   - https://your-project-name.vercel.app 접속
    - "회원가입" 클릭
    - 이메일, 비밀번호, 기본 정보 입력
    - 이메일 인증 완료
@@ -440,7 +440,7 @@ jobs:
 {
   "ci": {
     "collect": {
-      "url": ["https://senior-mhealth-lee.vercel.app/"],
+      "url": ["https://your-project-name.vercel.app/"],
       "numberOfRuns": 3
     },
     "assert": {
@@ -695,7 +695,7 @@ firebase firestore:databases:list
 **Cloud Run 최적화**:
 ```yaml
 # 최소 인스턴스 0으로 설정 (콜드 스타트 허용)
-gcloud run services update senior-mhealth-ai \
+gcloud run services update ${AI_SERVICE_NAME} \
   --min-instances=0 \
   --max-instances=3 \
   --concurrency=80 \
@@ -798,7 +798,7 @@ app.post('/api/user',
 # CORS 에러
 # 해결: Cloud Run 서비스에 CORS 헤더 추가
 app.use(cors({
-  origin: ['https://senior-mhealth-lee.vercel.app'],
+  origin: ['https://your-project-name.vercel.app'],
   credentials: true
 }));
 

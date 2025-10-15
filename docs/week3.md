@@ -449,15 +449,15 @@ gcloud config set project YOUR_PROJECT_ID
     ```
     
 2. **프로젝트 정보 입력**
-    - 프로젝트 이름: `senior-mhealth-학번` (예: senior-mhealth-202312345)
+    - 프로젝트 이름: `senior-mhealth-your-name` (예: senior-mhealth-홍길동)
     - 프로젝트 ID: 자동 생성 또는 커스텀 (전역 고유해야 함)
     - 위치: "조직 없음" 선택
 3. **프로젝트 ID 저장**
-    
+
     ```
     ⚠️ 중요: 프로젝트 ID를 메모해두세요!
-    예: senior-mhealth-202312345-a1b2c3
-    
+    예: senior-mhealth-your-name-a1b2c3
+
     ```
     
 
@@ -511,9 +511,9 @@ VSCode에서:
 `.env` 파일 내용 수정:
 
 ```
-GCP_PROJECT_ID=senior-mhealth-학번  # 자신의 프로젝트 ID로 변경!
+GCP_PROJECT_ID=your-project-id  # 자신의 프로젝트 ID로 변경!
 GCP_REGION=asia-northeast3
-FIREBASE_PROJECT_ID=senior-mhealth-학번
+FIREBASE_PROJECT_ID=your-project-id
 
 ```
 

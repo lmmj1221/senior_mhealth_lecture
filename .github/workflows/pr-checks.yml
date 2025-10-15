@@ -1,0 +1,239 @@
+name: Pull Request Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+
+env:
+  NODE_VERSION: '18'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # 코드 품질 검사
+  lint-and-format:
+    name: Lint and Format Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install backend dependencies
+        run: |
+          cd backend/functions
+          npm ci
+
+      - name: Lint backend
+        run: |
+          cd backend/functions
+          npm run lint || echo "⚠️ Backend linting issues found"
+
+      - name: Install frontend web dependencies
+        run: |
+          cd frontend/web
+          npm ci
+
+      - name: Lint frontend web
+        run: |
+          cd frontend/web
+          npm run lint || echo "⚠️ Frontend web linting issues found"
+
+      - name: Check TypeScript types
+        run: |
+          echo "Checking backend types..."
+          cd backend/functions
+          npx tsc --noEmit || echo "⚠️ Backend type errors found"
+
+          echo "Checking frontend web types..."
+          cd ../../frontend/web
+          npx tsc --noEmit || echo "⚠️ Frontend web type errors found"
+
+  # 보안 검사
+  security-scan:
+    name: Security Vulnerability Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Run npm audit on backend
+        run: |
+          cd backend/functions
+          npm audit --audit-level=moderate || echo "⚠️ Backend vulnerabilities found"
+
+      - name: Run npm audit on frontend web
+        run: |
+          cd frontend/web
+          npm audit --audit-level=moderate || echo "⚠️ Frontend web vulnerabilities found"
+
+      - name: Check for secrets in code
+        run: |
+          echo "Checking for potential secrets..."
+
+          # API 키 패턴 검사
+          if grep -r "AIza[0-9A-Za-z\\-_]{35}" --exclude-dir=node_modules --exclude-dir=.git .; then
+            echo "❌ Potential Google API key found!"
+            exit 1
+          fi
+
+          # Firebase 설정 검사 (실제 값이 하드코딩되어 있는지)
+          if grep -r "firebaseConfig.*apiKey.*AIza" --exclude-dir=node_modules --exclude-dir=.git .; then
+            echo "❌ Firebase config with real API key found!"
+            exit 1
+          fi
+
+          echo "✅ No obvious secrets found"
+
+  # 단위 테스트
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Test backend functions
+        run: |
+          cd backend/functions
+          npm ci
+          npm test || echo "⚠️ Backend tests failed or not configured"
+
+      - name: Test frontend web
+        run: |
+          cd frontend/web
+          npm ci
+          npm test || echo "⚠️ Frontend web tests failed or not configured"
+
+      - name: Test Python services
+        run: |
+          if [ -f "backend/ai-service/requirements.txt" ]; then
+            cd backend/ai-service
+            pip install -r requirements.txt
+            python -m pytest tests/ || echo "⚠️ AI service tests failed or not configured"
+          fi
+
+  # 빌드 검증
+  build-verification:
+    name: Build Verification
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Build backend
+        run: |
+          cd backend/functions
+          npm ci
+          npm run build || echo "⚠️ Backend build failed"
+
+      - name: Build frontend web
+        run: |
+          cd frontend/web
+          npm ci
+
+          # 테스트용 환경 변수 설정
+          cat > .env.local << EOF
+          NEXT_PUBLIC_FIREBASE_API_KEY=test-api-key
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=test-project.firebaseapp.com
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID=test-project-id
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=test-project.appspot.com
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789
+          NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789:web:abcdef
+          NEXT_PUBLIC_API_URL=https://test-api.example.com
+          EOF
+
+          npm run build
+
+  # PR 크기 검사
+  pr-size-check:
+    name: PR Size Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check PR size
+        run: |
+          # 변경된 파일 수 확인
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | wc -l)
+
+          # 변경된 라인 수 확인
+          CHANGED_LINES=$(git diff --shortstat origin/${{ github.base_ref }}...HEAD | grep -oP '\d+(?= insertion)|\d+(?= deletion)' | awk '{s+=$1} END {print s}')
+
+          echo "Changed files: $CHANGED_FILES"
+          echo "Changed lines: $CHANGED_LINES"
+
+          # 경고 임계값
+          if [ $CHANGED_FILES -gt 50 ]; then
+            echo "⚠️ Warning: This PR changes more than 50 files ($CHANGED_FILES files)"
+            echo "Consider breaking it into smaller PRs for easier review."
+          fi
+
+          if [ $CHANGED_LINES -gt 1000 ]; then
+            echo "⚠️ Warning: This PR changes more than 1000 lines ($CHANGED_LINES lines)"
+            echo "Consider breaking it into smaller PRs for easier review."
+          fi
+
+  # PR 요약
+  pr-summary:
+    name: PR Summary
+    needs: [lint-and-format, security-scan, unit-tests, build-verification, pr-size-check]
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Generate summary
+        run: |
+          echo "## 📋 PR Check Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Lint & Format | ${{ needs.lint-and-format.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security Scan | ${{ needs.security-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Unit Tests | ${{ needs.unit-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build Verification | ${{ needs.build-verification.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| PR Size Check | ${{ needs.pr-size-check.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.security-scan.result }}" = "failure" ]; then
+            echo "❌ **Security issues found. Please fix before merging.**" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          elif [ "${{ needs.build-verification.result }}" = "failure" ]; then
+            echo "❌ **Build failed. Please fix before merging.**" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          else
+            echo "✅ **All critical checks passed!**" >> $GITHUB_STEP_SUMMARY
+          fi

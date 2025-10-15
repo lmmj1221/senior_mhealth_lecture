@@ -287,8 +287,8 @@ aapt dump badging build/app/outputs/flutter-apk/app-release.apk | head -10
 
 ```bash
 # 키스토어 생성 (한 번만)
-keytool -genkey -v -keystore ~/senior-mhealth.keystore \
-  -alias senior-mhealth \
+keytool -genkey -v -keystore ~/your-app-name.keystore \
+  -alias your-app-alias \
   -keyalg RSA \
   -keysize 2048 \
   -validity 10000
@@ -310,8 +310,8 @@ keytool -genkey -v -keystore ~/senior-mhealth.keystore \
 ```properties
 storePassword=your-store-password
 keyPassword=your-key-password
-keyAlias=senior-mhealth
-storeFile=/Users/username/senior-mhealth.keystore
+keyAlias=your-app-alias
+storeFile=/Users/username/your-app-name.keystore
 ```
 
 `android/app/build.gradle` 수정:

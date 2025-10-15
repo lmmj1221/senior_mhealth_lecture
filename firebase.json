@@ -1,6 +1,8 @@
 {
   "functions": {
-    "source": "backend/functions"
+    "source": "backend/functions",
+    "runtime": "nodejs20",
+    "region": "asia-northeast3"
   },
   "firestore": {
     "rules": "setup/scripts/firestore.rules",

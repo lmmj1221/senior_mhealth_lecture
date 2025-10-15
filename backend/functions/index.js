@@ -113,7 +113,7 @@ const auth = admin.auth();
 /**
  * Storage 트리거 - 음성 파일 자동 처리
  */
-exports.processVoiceFile = functions.storage
+exports.processVoiceFile = functions.region('asia-northeast3').storage
   .object()
   .onFinalize(async (object) => {
     const filePath = object.name;

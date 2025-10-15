@@ -35,19 +35,21 @@
 
 ### 1.1 Firebase Console에서 생성 (권장)
 
-1. [Firebase Console](https://console.firebase.google.com/project/my-project-54928-b9704/authentication/users) 접속
-2. Authentication > Users 메뉴
-3. "Add user" 클릭
-4. 사용자 정보 입력:
+1. [Firebase Console](https://console.firebase.google.com) 접속 > 프로젝트 선택 > Authentication > Users
+2. "Add user" 클릭
+3. 사용자 정보 입력:
    - Email: `test@test.com`
    - Password: `test1234`
-5. "Add user" 클릭
+4. "Add user" 클릭
 
 ### 1.2 사용자 UID 확인
 
 ```bash
+# 환경 변수 설정
+export GCP_PROJECT_ID="your-project-id"  # 실제 프로젝트 ID로 변경
+
 # 프로젝트 루트에서 실행
-firebase auth:export auth_users.json --project my-project-54928-b9704
+firebase auth:export auth_users.json --project ${GCP_PROJECT_ID}
 
 # UID 확인
 cat auth_users.json | jq '.users[] | select(.email == "test@test.com") | {uid: .localId, email: .email}'
@@ -56,12 +58,15 @@ cat auth_users.json | jq '.users[] | select(.email == "test@test.com") | {uid: .
 **예상 출력:**
 ```json
 {
-  "uid": "7wll6D15YZgVrL7jEO1dJhyCUKG3",
+  "uid": "<dynamically-generated-uid>",
   "email": "test@test.com"
 }
 ```
 
-**중요**: 이 UID를 다음 단계에서 사용합니다.
+**중요**: 이 UID를 환경 변수로 저장하세요:
+```bash
+export TEST_USER_UID="<위에서-확인한-uid>"
+```
 
 ---
 
@@ -84,17 +89,25 @@ npm install firebase-admin
 const admin = require('firebase-admin');
 const serviceAccount = require('./backend/service-account-key.json');
 
+// 환경 변수에서 값 가져오기
+const projectId = serviceAccount.project_id || process.env.GCP_PROJECT_ID;
+const storageBucket = `${projectId}.firebasestorage.app`;
+
 // Firebase Admin 초기화
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  storageBucket: 'my-project-54928-b9704.firebasestorage.app'
+  storageBucket: storageBucket
 });
 
 const db = admin.firestore();
 
 async function createTestCall() {
-  // Step 1에서 확인한 UID로 변경
-  const userId = '7wll6D15YZgVrL7jEO1dJhyCUKG3';
+  // 환경 변수에서 UID 가져오기 (Step 1에서 확인한 값)
+  const userId = process.env.TEST_USER_UID;
+  if (!userId) {
+    throw new Error('TEST_USER_UID 환경 변수가 설정되지 않았습니다. Step 1을 먼저 완료하세요.');
+  }
+
   const seniorId = 'test_senior_001';
   const callId = 'test_call_' + Date.now();
 
@@ -151,17 +164,20 @@ node create_test_call.js
 **예상 출력:**
 ```
 📝 Creating test call document...
-   User ID: 7wll6D15YZgVrL7jEO1dJhyCUKG3
+   User ID: <your-test-user-uid>
    Senior ID: test_senior_001
-   Call ID: test_call_1760506267900
+   Call ID: test_call_<timestamp>
 ✅ Call document created successfully!
-   Path: users/7wll6D15YZgVrL7jEO1dJhyCUKG3/calls/test_call_1760506267900
+   Path: users/<your-test-user-uid>/calls/test_call_<timestamp>
 
 📤 Now you can upload the file to Storage at:
-   calls/7wll6D15YZgVrL7jEO1dJhyCUKG3/test_senior_001/test_call_1760506267900/통화 녹음 어머니_250505_122325.m4a
+   calls/<your-test-user-uid>/test_senior_001/test_call_<timestamp>/통화 녹음 어머니_250505_122325.m4a
 ```
 
-**중요**: Call ID를 기록해두세요. 다음 단계에서 사용합니다.
+**중요**: Call ID를 환경 변수로 저장하세요:
+```bash
+export TEST_CALL_ID="<위-출력에서-확인한-call-id>"
+```
 
 ---
 
@@ -177,19 +193,28 @@ const fs = require('fs');
 const path = require('path');
 const serviceAccount = require('./backend/service-account-key.json');
 
+// 환경 변수에서 값 가져오기
+const projectId = serviceAccount.project_id || process.env.GCP_PROJECT_ID;
+const storageBucket = `${projectId}.firebasestorage.app`;
+
 // Firebase Admin 초기화
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  storageBucket: 'my-project-54928-b9704.firebasestorage.app'
+  storageBucket: storageBucket
 });
 
 const bucket = admin.storage().bucket();
 
 async function uploadTestFile() {
-  // Step 1과 Step 3의 값으로 변경
-  const userId = '7wll6D15YZgVrL7jEO1dJhyCUKG3';
+  // 환경 변수에서 값 가져오기
+  const userId = process.env.TEST_USER_UID;
+  const callId = process.env.TEST_CALL_ID;
+
+  if (!userId || !callId) {
+    throw new Error('TEST_USER_UID 또는 TEST_CALL_ID 환경 변수가 설정되지 않았습니다. Step 1과 3을 먼저 완료하세요.');
+  }
+
   const seniorId = 'test_senior_001';
-  const callId = 'test_call_1760506267900'; // Step 3에서 생성된 Call ID
   const fileName = '통화 녹음 어머니_250505_122325.m4a';
 
   const localFilePath = path.join(__dirname, 'data', fileName);
@@ -257,18 +282,18 @@ node upload_test_file.js
 **예상 출력:**
 ```
 📤 Uploading test file to Firebase Storage...
-   Local file: /Users/callii/Documents/senior_mhealth_lecture/data/통화 녹음 어머니_250505_122325.m4a
-   Storage path: calls/7wll6D15YZgVrL7jEO1dJhyCUKG3/test_senior_001/test_call_1760506267900/통화 녹음 어머니_250505_122325.m4a
+   Local file: /path/to/your/project/data/통화 녹음 어머니_250505_122325.m4a
+   Storage path: calls/<your-test-user-uid>/test_senior_001/test_call_<timestamp>/통화 녹음 어머니_250505_122325.m4a
    File size: 1.59 MB
 ✅ File uploaded successfully!
-   Storage path: calls/7wll6D15YZgVrL7jEO1dJhyCUKG3/test_senior_001/test_call_1760506267900/통화 녹음 어머니_250505_122325.m4a
+   Storage path: calls/<your-test-user-uid>/test_senior_001/test_call_<timestamp>/통화 녹음 어머니_250505_122325.m4a
 
 🔔 Storage trigger should fire now...
    Check Firebase Functions logs:
-   firebase functions:log --project my-project-54928-b9704
+   firebase functions:log --project ${GCP_PROJECT_ID}
 
 📊 Check Firestore for updates:
-   Path: users/7wll6D15YZgVrL7jEO1dJhyCUKG3/calls/test_call_1760506267900
+   Path: users/<your-test-user-uid>/calls/test_call_<timestamp>
 
 ✨ Upload complete!
 ```
@@ -285,18 +310,26 @@ node upload_test_file.js
 const admin = require('firebase-admin');
 const serviceAccount = require('./backend/service-account-key.json');
 
+// 환경 변수에서 값 가져오기
+const projectId = serviceAccount.project_id || process.env.GCP_PROJECT_ID;
+const storageBucket = `${projectId}.firebasestorage.app`;
+
 // Firebase Admin 초기화
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  storageBucket: 'my-project-54928-b9704.firebasestorage.app'
+  storageBucket: storageBucket
 });
 
 const db = admin.firestore();
 
 async function checkFirestore() {
-  // Step 1과 Step 3의 값으로 변경
-  const userId = '7wll6D15YZgVrL7jEO1dJhyCUKG3';
-  const callId = 'test_call_1760506267900';
+  // 환경 변수에서 값 가져오기 (Step 1과 Step 3에서 설정한 값)
+  const userId = process.env.TEST_USER_UID;
+  const callId = process.env.TEST_CALL_ID;
+
+  if (!userId || !callId) {
+    throw new Error('TEST_USER_UID 또는 TEST_CALL_ID 환경 변수가 설정되지 않았습니다. Step 1과 3을 먼저 완료하세요.');
+  }
 
   try {
     console.log('📊 Checking Firestore for call document...');
@@ -347,13 +380,13 @@ node check_firestore.js
 **예상 출력:**
 ```
 📊 Checking Firestore for call document...
-   Path: users/7wll6D15YZgVrL7jEO1dJhyCUKG3/calls/test_call_1760506267900
+   Path: users/<your-test-user-uid>/calls/test_call_<timestamp>
 
 ✅ Document found!
 
 📄 Document data:
 {
-  "userId": "7wll6D15YZgVrL7jEO1dJhyCUKG3",
+  "userId": "<your-test-user-uid>",
   "seniorId": "test_senior_001",
   "fileName": "통화 녹음 어머니_250505_122325.m4a",
   "status": "pending",
@@ -362,9 +395,9 @@ node check_firestore.js
     "device": "test",
     "version": "1.0.0"
   },
-  "createdAt": { "_seconds": 1760506269, "_nanoseconds": 91000000 },
-  "recordedAt": { "_seconds": 1760506269, "_nanoseconds": 91000000 },
-  "updatedAt": { "_seconds": 1760506269, "_nanoseconds": 91000000 }
+  "createdAt": { "_seconds": <timestamp>, "_nanoseconds": <nanoseconds> },
+  "recordedAt": { "_seconds": <timestamp>, "_nanoseconds": <nanoseconds> },
+  "updatedAt": { "_seconds": <timestamp>, "_nanoseconds": <nanoseconds> }
 }
 
 🔍 Key fields:
@@ -372,7 +405,7 @@ node check_firestore.js
    analysisStatus: pending
    fileName: 통화 녹음 어머니_250505_122325.m4a
    filePath: undefined
-   updatedAt: 2025-10-15T05:31:09.091Z
+   updatedAt: <ISO-timestamp>
 ```
 
 ---
@@ -381,18 +414,21 @@ node check_firestore.js
 
 ### 6.1 Authentication
 
-1. [Authentication Console](https://console.firebase.google.com/project/my-project-54928-b9704/authentication/users)
+1. Firebase Console 접속: `https://console.firebase.google.com/project/${GCP_PROJECT_ID}/authentication/users`
+   - 실제 프로젝트 ID로 `${GCP_PROJECT_ID}` 교체
 2. `test@test.com` 사용자 확인
 
 ### 6.2 Firestore
 
-1. [Firestore Console](https://console.firebase.google.com/project/my-project-54928-b9704/firestore/databases/-default-/data)
+1. Firestore Console 접속: `https://console.firebase.google.com/project/${GCP_PROJECT_ID}/firestore/databases/-default-/data`
+   - 실제 프로젝트 ID로 `${GCP_PROJECT_ID}` 교체
 2. 경로 확인: `users/{userId}/calls/{callId}`
 3. 문서 데이터 확인
 
 ### 6.3 Storage
 
-1. [Storage Console](https://console.firebase.google.com/project/my-project-54928-b9704/storage)
+1. Storage Console 접속: `https://console.firebase.google.com/project/${GCP_PROJECT_ID}/storage`
+   - 실제 프로젝트 ID로 `${GCP_PROJECT_ID}` 교체
 2. 경로 확인: `calls/{userId}/{seniorId}/{callId}/{fileName}`
 3. 파일 존재 확인 (1.59 MB)
 
@@ -404,18 +440,18 @@ node check_firestore.js
 ```
 Email: test@test.com
 Password: test1234
-UID: 7wll6D15YZgVrL7jEO1dJhyCUKG3
+UID: <your-test-user-uid>
 ```
 
 ### Firestore
 ```
 Collection: users
-Document: 7wll6D15YZgVrL7jEO1dJhyCUKG3
+Document: <your-test-user-uid>
 Sub-collection: calls
-Document: test_call_1760506267900
+Document: test_call_<timestamp>
 
 Data:
-- userId: 7wll6D15YZgVrL7jEO1dJhyCUKG3
+- userId: <your-test-user-uid>
 - seniorId: test_senior_001
 - fileName: 통화 녹음 어머니_250505_122325.m4a
 - status: pending
@@ -426,8 +462,8 @@ Data:
 
 ### Storage
 ```
-Bucket: my-project-54928-b9704.firebasestorage.app
-Path: calls/7wll6D15YZgVrL7jEO1dJhyCUKG3/test_senior_001/test_call_1760506267900/통화 녹음 어머니_250505_122325.m4a
+Bucket: ${GCP_PROJECT_ID}.firebasestorage.app
+Path: calls/<your-test-user-uid>/test_senior_001/test_call_<timestamp>/통화 녹음 어머니_250505_122325.m4a
 Size: 1.59 MB
 Content-Type: audio/m4a
 ```
@@ -464,7 +500,12 @@ Password: test1234
 ```javascript
 // create_multiple_calls.js
 async function createMultipleCalls() {
-  const userId = '7wll6D15YZgVrL7jEO1dJhyCUKG3';
+  // 환경 변수에서 UID 가져오기
+  const userId = process.env.TEST_USER_UID;
+  if (!userId) {
+    throw new Error('TEST_USER_UID 환경 변수가 설정되지 않았습니다.');
+  }
+
   const seniorIds = ['senior_001', 'senior_002', 'senior_003'];
   const fileNames = [
     '통화 녹음 어머니_250505_122325.m4a',
@@ -499,7 +540,12 @@ async function createMultipleCalls() {
 ```javascript
 // create_senior_profiles.js
 async function createSeniorProfiles() {
-  const userId = '7wll6D15YZgVrL7jEO1dJhyCUKG3';
+  // 환경 변수에서 UID 가져오기
+  const userId = process.env.TEST_USER_UID;
+  if (!userId) {
+    throw new Error('TEST_USER_UID 환경 변수가 설정되지 않았습니다.');
+  }
+
   const seniors = [
     {
       seniorId: 'test_senior_001',
@@ -557,7 +603,9 @@ async function createSeniorProfiles() {
 
 ## 🔗 참고 링크
 
-- [Firebase Authentication Console](https://console.firebase.google.com/project/my-project-54928-b9704/authentication/users)
-- [Firestore Console](https://console.firebase.google.com/project/my-project-54928-b9704/firestore/databases/-default-/data)
-- [Storage Console](https://console.firebase.google.com/project/my-project-54928-b9704/storage)
-- [Functions Logs](https://console.firebase.google.com/project/my-project-54928-b9704/functions/logs)
+> **중요**: 아래 링크에서 `${GCP_PROJECT_ID}`를 실제 프로젝트 ID로 교체하세요.
+
+- Firebase Authentication Console: `https://console.firebase.google.com/project/${GCP_PROJECT_ID}/authentication/users`
+- Firestore Console: `https://console.firebase.google.com/project/${GCP_PROJECT_ID}/firestore/databases/-default-/data`
+- Storage Console: `https://console.firebase.google.com/project/${GCP_PROJECT_ID}/storage`
+- Functions Logs: `https://console.firebase.google.com/project/${GCP_PROJECT_ID}/functions/logs`

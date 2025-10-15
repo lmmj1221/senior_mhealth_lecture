@@ -1,0 +1,188 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: senior-mhealth-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-senior_mhealth_dev}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: senior-mhealth-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Firebase Emulator Suite
+  firebase-emulator:
+    image: node:18-alpine
+    container_name: senior-mhealth-firebase-emulator
+    restart: unless-stopped
+    working_dir: /app
+    command: >
+      sh -c "
+        npm install -g firebase-tools &&
+        firebase emulators:start --project demo-senior-mhealth
+      "
+    ports:
+      - "4000:4000"   # Emulator Suite UI
+      - "9099:9099"   # Authentication
+      - "8080:8080"   # Cloud Functions
+      - "9000:9000"   # Realtime Database
+      - "8085:8085"   # Cloud Firestore
+      - "9199:9199"   # Cloud Storage
+      - "9299:9299"   # Eventarc
+    volumes:
+      - ./firebase.json:/app/firebase.json:ro
+      - ./.firebaserc:/app/.firebaserc:ro
+      - ./backend/functions:/app/functions:ro
+      - firebase_data:/app/.firebase
+    environment:
+      - FIREBASE_PROJECT_ID=demo-senior-mhealth
+      - GCLOUD_PROJECT=demo-senior-mhealth
+    depends_on:
+      - postgres
+      - redis
+
+  # Backend API Service (Python)
+  api-service:
+    build:
+      context: ./backend/api-service
+      dockerfile: Dockerfile.dev
+    container_name: senior-mhealth-api
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - ./backend/api-service:/app
+      - /app/__pycache__
+    environment:
+      - ENVIRONMENT=development
+      - GOOGLE_CLOUD_PROJECT=${GCP_PROJECT_ID:-demo-senior-mhealth}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-senior_mhealth_dev}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - FIREBASE_AUTH_EMULATOR_HOST=firebase-emulator:9099
+      - FIRESTORE_EMULATOR_HOST=firebase-emulator:8085
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      firebase-emulator:
+        condition: service_started
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Backend AI Service (Python)
+  ai-service:
+    build:
+      context: ./backend/ai-service
+      dockerfile: Dockerfile.dev
+    container_name: senior-mhealth-ai
+    restart: unless-stopped
+    ports:
+      - "${AI_PORT:-8001}:8001"
+    volumes:
+      - ./backend/ai-service:/app
+      - /app/__pycache__
+    environment:
+      - ENVIRONMENT=development
+      - GOOGLE_CLOUD_PROJECT=${GCP_PROJECT_ID:-demo-senior-mhealth}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - FIREBASE_AUTH_EMULATOR_HOST=firebase-emulator:9099
+      - FIRESTORE_EMULATOR_HOST=firebase-emulator:8085
+    depends_on:
+      redis:
+        condition: service_healthy
+      firebase-emulator:
+        condition: service_started
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+
+  # Frontend Web (Next.js) - Development Server
+  web:
+    build:
+      context: ./frontend/web
+      dockerfile: Dockerfile.dev
+    container_name: senior-mhealth-web
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    volumes:
+      - ./frontend/web:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_FIREBASE_API_KEY=${FIREBASE_API_KEY:-demo-api-key}
+      - NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=demo-senior-mhealth.firebaseapp.com
+      - NEXT_PUBLIC_FIREBASE_PROJECT_ID=demo-senior-mhealth
+      - NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=demo-senior-mhealth.appspot.com
+      - NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789
+      - NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789:web:abcdef
+      - NEXT_PUBLIC_API_URL=http://localhost:${API_PORT:-8000}
+      - NEXT_PUBLIC_USE_EMULATOR=true
+      - NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST=localhost:9099
+      - NEXT_PUBLIC_FIRESTORE_EMULATOR_HOST=localhost:8085
+    depends_on:
+      - firebase-emulator
+      - api-service
+    command: npm run dev
+
+  # pgAdmin (Database Management UI)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: senior-mhealth-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@senior-mhealth.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_LISTEN_PORT: 80
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  firebase_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+networks:
+  default:
+    name: senior-mhealth-network

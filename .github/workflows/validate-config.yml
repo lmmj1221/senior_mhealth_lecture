@@ -1,0 +1,184 @@
+name: Validate Configuration
+
+on:
+  pull_request:
+    branches: [main, master, develop]
+  push:
+    branches: [main, master, develop]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Validate Project Configuration
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/functions/package-lock.json
+            frontend/web/package-lock.json
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          version: 'latest'
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Check for placeholder values in code
+        run: |
+          echo "Checking for hardcoded project IDs..."
+
+          # Check for specific hardcoded project ID (should be replaced with placeholders)
+          if grep -r "senior-mhealth-472007" --exclude-dir=node_modules --exclude-dir=.git --exclude="*.md" .; then
+            echo "❌ Found hardcoded project ID 'senior-mhealth-472007'"
+            echo "These should be replaced with placeholders or environment variables"
+            exit 1
+          else
+            echo "✅ No hardcoded project IDs found"
+          fi
+
+      - name: Check for exposed sensitive files
+        run: |
+          echo "Checking for sensitive files in Git..."
+
+          # List of files that should never be committed
+          SENSITIVE_FILES=(
+            ".env"
+            "project.config.json"
+            "serviceAccountKey.json"
+            "service-account-key.json"
+            "auth_users.json"
+          )
+
+          FOUND_SENSITIVE=false
+          for file in "${SENSITIVE_FILES[@]}"; do
+            if git ls-files | grep -q "^${file}$"; then
+              echo "❌ Sensitive file found in Git: $file"
+              FOUND_SENSITIVE=true
+            fi
+          done
+
+          if [ "$FOUND_SENSITIVE" = true ]; then
+            echo "❌ Sensitive files found in repository!"
+            echo "Please remove them using: git rm --cached <filename>"
+            exit 1
+          else
+            echo "✅ No sensitive files found in Git"
+          fi
+
+      - name: Verify template files have placeholders
+        run: |
+          echo "Checking template files..."
+
+          # Check .env.example
+          if [ -f ".env.example" ]; then
+            if grep -q "your-project-id\|YOUR_" .env.example; then
+              echo "✅ .env.example has placeholders"
+            else
+              echo "⚠️  .env.example may not have proper placeholders"
+            fi
+          fi
+
+          # Check project.config.template.json
+          if [ -f "project.config.template.json" ]; then
+            if grep -q "YOUR_" project.config.template.json; then
+              echo "✅ project.config.template.json has placeholders"
+            else
+              echo "❌ project.config.template.json should have YOUR_ placeholders"
+              exit 1
+            fi
+          fi
+
+      - name: Check .gitignore completeness
+        run: |
+          echo "Checking .gitignore..."
+
+          REQUIRED_PATTERNS=(
+            ".env"
+            "project.config.json"
+            "serviceAccountKey.json"
+            "service-account-key.json"
+            "auth_users.json"
+          )
+
+          MISSING_PATTERNS=false
+          for pattern in "${REQUIRED_PATTERNS[@]}"; do
+            if ! grep -q "$pattern" .gitignore; then
+              echo "⚠️  Missing pattern in .gitignore: $pattern"
+              MISSING_PATTERNS=true
+            fi
+          done
+
+          if [ "$MISSING_PATTERNS" = true ]; then
+            echo "❌ .gitignore is incomplete"
+            exit 1
+          else
+            echo "✅ .gitignore looks good"
+          fi
+
+      - name: Validate backend config loader
+        run: |
+          echo "Testing backend config loader..."
+          cd backend
+
+          # Check if config_loader.py exists and has proper structure
+          if [ -f "config_loader.py" ]; then
+            if grep -q "your-project-id" config_loader.py; then
+              echo "✅ Backend config has placeholders"
+            else
+              echo "❌ Backend config should have 'your-project-id' placeholder"
+              exit 1
+            fi
+          fi
+
+      - name: Validate frontend configs
+        run: |
+          echo "Testing frontend configs..."
+
+          # Check web config
+          if [ -f "frontend/web/lib/config/project-config.ts" ]; then
+            if grep -q "your-project-id" frontend/web/lib/config/project-config.ts; then
+              echo "✅ Frontend web config has placeholders"
+            else
+              echo "❌ Frontend web config should have placeholders"
+              exit 1
+            fi
+          fi
+
+          # Check mobile config
+          if [ -f "frontend/mobile/lib/config/app_config.dart" ]; then
+            if grep -q "your-project-id" frontend/mobile/lib/config/app_config.dart; then
+              echo "✅ Frontend mobile config has placeholders"
+            else
+              echo "❌ Frontend mobile config should have placeholders"
+              exit 1
+            fi
+          fi
+
+      - name: Summary
+        if: success()
+        run: |
+          echo ""
+          echo "🎉 All validation checks passed!"
+          echo ""
+          echo "✅ No hardcoded project IDs"
+          echo "✅ No sensitive files in Git"
+          echo "✅ Template files have placeholders"
+          echo "✅ .gitignore is complete"
+          echo "✅ Configuration files are properly set up"
+          echo ""
+          echo "This project is ready to be cloned and used by others!"
