@@ -415,6 +415,9 @@ exports.api = functions
 exports.onHealthDataCreated = require('./triggers/onHealthDataCreated');
 exports.onUserCreated = require('./triggers/onUserCreated');
 exports.scheduledAnalysis = require('./triggers/scheduledAnalysis');
+
+// Storage 트리거 함수
+exports.processVoiceFile = require('./triggers/processVoiceFile');
 EOF
 ```
 
@@ -724,25 +727,173 @@ module.exports = functions
     }
   });
 EOF
+
+# Storage 트리거 - 음성 파일 자동 처리
+cat > triggers/processVoiceFile.js << 'EOF'
+const functions = require('firebase-functions');
+const admin = require('firebase-admin');
+const axios = require('axios');
+
+const db = admin.firestore();
+
+module.exports = functions
+  .region('asia-northeast3')
+  .storage
+  .object()
+  .onFinalize(async (object) => {
+    const filePath = object.name;
+    const metadata = object.metadata || {};
+    
+    console.log('🔔 Storage 트리거 발생:', filePath);
+    
+    // 음성 파일 경로인지 확인 (calls/{userId}/{seniorId}/{callId}/filename)
+    if (!filePath.startsWith('calls/')) {
+      console.log('❌ 음성 파일이 아님:', filePath);
+      return null;
+    }
+    
+    try {
+      // 1. 파일 경로에서 정보 추출
+      const pathParts = filePath.split('/');
+      if (pathParts.length < 4) {
+        console.log('❌ 잘못된 경로 구조:', filePath);
+        return null;
+      }
+      
+      const userId = pathParts[1];
+      const seniorId = pathParts[2];
+      const callId = pathParts[3];
+      const fileName = pathParts[4] || 'unknown';
+      
+      console.log('📋 파일 정보:', { userId, seniorId, callId, fileName });
+      
+      // 2. Firestore에서 해당 통화 문서 찾기
+      const callDocRef = db.collection('users').doc(userId).collection('calls').doc(callId);
+      const callDoc = await callDocRef.get();
+      
+      if (!callDoc.exists) {
+        console.log('❌ 통화 문서를 찾을 수 없음:', callId);
+        return null;
+      }
+      
+      // 3. Firestore 문서 상태 업데이트
+      await callDocRef.update({
+        status: 'uploaded',
+        analysisStatus: 'processing',
+        filePath: filePath,
+        uploadedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      
+      console.log('✅ Firestore 업데이트 완료:', callId);
+      
+      // 4. AI 분석 서비스 호출
+      const aiServiceUrl = process.env.CLOUD_RUN_AI_URL || functions.config().services?.ai_url;
+      
+      if (aiServiceUrl) {
+        console.log('🤖 AI 분석 요청 시작:', aiServiceUrl);
+        
+        // AI 분석 요청 페이로드
+        const analysisRequest = {
+          call_id: callId,
+          user_id: userId,
+          senior_id: seniorId,
+          audio_url: filePath,
+          analysis_type: 'comprehensive',
+          metadata: {
+            fileName: fileName,
+            uploadedAt: new Date().toISOString(),
+            ...metadata
+          }
+        };
+        
+        // HTTP 요청으로 AI 서비스 호출
+        try {
+          const response = await axios.post(
+            `${aiServiceUrl}/analyze`,
+            analysisRequest,
+            {
+              timeout: 30000,
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+          
+          console.log('🎉 AI 분석 요청 성공:', response.data);
+          
+          // 분석 요청 성공시 상태 업데이트
+          await callDocRef.update({
+            analysisStatus: 'ai_processing',
+            aiRequestId: response.data.analysis_id || callId,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+          
+        } catch (aiError) {
+          console.error('❌ AI 분석 요청 실패:', aiError.message);
+          
+          // 분석 요청 실패시 상태 업데이트
+          await callDocRef.update({
+            analysisStatus: 'failed',
+            errorMessage: aiError.message,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+        }
+      } else {
+        console.log('⚠️ AI 서비스 URL이 설정되지 않음');
+        
+        // AI 서비스 URL이 없을 때 상태 업데이트
+        await callDocRef.update({
+          analysisStatus: 'pending_config',
+          errorMessage: 'AI service URL not configured',
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+      }
+      
+      return { success: true, callId, status: 'processed' };
+      
+    } catch (error) {
+      console.error('❌ processVoiceFile 오류:', error);
+      return { success: false, error: error.message };
+    }
+  });
+EOF
 ```
 
 ### 2.5 환경 변수 설정 🤖
 
 ```bash
-# .env 파일 생성
+# .env 파일 생성 (Functions용)
 cat > .env << EOF
-# Cloud Run Services
-AI_SERVICE_URL=https://senior-mhealth-ai-xxxxx-an.a.run.app
-API_SERVICE_URL=https://senior-mhealth-api-xxxxx-an.a.run.app
+# Cloud Run Services - Storage 트리거에서 사용
+CLOUD_RUN_AI_URL=https://senior-mhealth-ai-xxxxx-an.a.run.app
+CLOUD_RUN_API_URL=https://senior-mhealth-api-xxxxx-an.a.run.app
 
-# Firebase
+# Firebase 설정
 FIREBASE_PROJECT_ID=senior-mhealth-lee
 EOF
 
 # Firebase Functions 환경 변수 설정
 firebase functions:config:set \
-  services.ai_url="${AI_SERVICE_URL}" \
-  services.api_url="${API_SERVICE_URL}"
+  services.ai_url="${CLOUD_RUN_AI_URL}" \
+  services.api_url="${CLOUD_RUN_API_URL}"
+
+# 현재 설정된 환경 변수 확인
+firebase functions:config:get
+```
+
+### 2.6 package.json 의존성 추가 🤖
+
+```bash
+# Storage 트리거에 필요한 axios 의존성이 이미 포함되어 있는지 확인
+cd functions
+cat package.json | grep axios
+
+# 없다면 추가 설치
+npm install axios
+
+# 전체 의존성 재설치
+npm install
 ```
 
 ---
@@ -766,7 +917,23 @@ curl http://localhost:5001/senior-mhealth-lee/asia-northeast3/api/health
 ### 3.2 Functions 배포 🤖
 
 ```bash
-# Functions 배포
+# ✅ Storage 트리거 포함하여 Functions 배포
+firebase deploy --only functions
+
+# 특정 함수만 배포하려면
+firebase deploy --only functions:processVoiceFile
+firebase deploy --only functions:onHealthDataCreated
+
+# 배포 확인
+firebase functions:list
+
+# 예상 결과:
+# ✅ api (HTTP Trigger)
+# ✅ processVoiceFile (Storage Trigger) ⭐
+# ✅ onHealthDataCreated (Firestore Trigger)  
+# ✅ onUserCreated (Auth Trigger)
+# ✅ scheduledAnalysis (Scheduled Function)
+```
 firebase deploy --only functions
 
 # 배포 확인
@@ -795,6 +962,30 @@ curl ${FUNCTIONS_URL}/health
 # 1. Firestore 메뉴 접속
 # 2. 컬렉션 생성 및 테스트 데이터 추가
 # 3. 트리거 함수 동작 확인
+```
+
+### 3.5 Storage 트리거 테스트 🆕
+
+```bash
+# ⭐ Storage 트리거 테스트 방법
+
+# 1. Firebase Console에서 Storage 메뉴 접속
+# 2. 테스트 파일 업로드: calls/test_user/test_senior/test_call/audio.m4a
+# 3. Functions 로그에서 트리거 실행 확인:
+
+firebase functions:log --only processVoiceFile
+
+# 예상 로그:
+# 🔔 Storage 트리거 발생: calls/test_user/test_senior/test_call/audio.m4a
+# 📋 파일 정보: {userId: test_user, seniorId: test_senior, callId: test_call}
+# ✅ Firestore 업데이트 완료: test_call
+# 🤖 AI 분석 요청 시작: https://...
+# 🎉 AI 분석 요청 성공: {...}
+
+# 4. Firestore에서 통화 문서 상태 확인:
+# - analysisStatus: 'ai_processing'
+# - filePath: 'calls/test_user/test_senior/test_call/audio.m4a'
+# - uploadedAt: [timestamp]
 ```
 
 ---
@@ -931,16 +1122,48 @@ if (cache.has(key)) {
 
 ## ✅ 완료 체크리스트
 
-- [ ] Firestore 데이터베이스 생성
-- [ ] 데이터 구조 설계
-- [ ] 보안 규칙 설정
-- [ ] Cloud Functions 프로젝트 초기화
-- [ ] Express API 구현
-- [ ] Firestore 트리거 함수 작성
+- [x] Firestore 데이터베이스 생성
+- [x] 데이터 구조 설계
+- [x] 보안 규칙 설정
+- [x] Cloud Functions 프로젝트 초기화
+- [x] Express API 구현
+- [x] Firestore 트리거 함수 작성
+- [x] **Storage 트리거 함수 구현** ⭐
 - [ ] Functions 배포
-- [ ] Cloud Run과 통합
+- [x] Storage 트리거와 Cloud Run AI 서비스 통합
 - [ ] 모니터링 설정
-- [ ] 비용 최적화 적용
+- [x] 비용 최적화 적용
+
+### 🆕 **새로 구현된 기능들**
+
+#### **Firebase Storage 트리거 자동화** ⭐
+- **위치**: `backend/functions/index.js`
+- **기능**: 파일 업로드 완료 시 자동으로 AI 분석 시작
+- **트리거**: `onFinalize` 이벤트
+- **처리 경로**: `calls/{userId}/{seniorId}/{callId}/filename`
+
+#### **완전한 워크플로우 구현**
+```javascript
+Firebase Storage 업로드 
+    ↓ (onFinalize 이벤트)
+Storage 트리거 실행
+    ↓
+Firestore 상태 업데이트 (pending → processing)
+    ↓
+AI 서비스 호출 (Cloud Run)
+    ↓
+결과에 따른 최종 상태 업데이트
+```
+
+#### **AI 서비스 연동**
+- HTTP 요청으로 Cloud Run AI 서비스 호출
+- 환경변수로 AI 서비스 URL 설정
+- 상태별 에러 처리 및 재시도 로직
+
+#### **Firestore 상태 관리**
+- `pending` → `processing` → `ai_processing` → `completed`
+- 실패 시 `failed` 상태로 업데이트
+- 상세한 에러 메시지 저장
 
 ---
 
