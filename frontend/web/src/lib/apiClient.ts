@@ -83,11 +83,8 @@ export interface Call {
   };
   
   // 분석 결과 (선택적)
-  analysis?: {
-    summary: string;
-    score: number;
-    recommendations: string[];
-  };
+  // Firestore analysisResult 필드의 다양한 구조를 지원하기 위해 any 타입 사용
+  analysis?: any;
 }
 
 // 분석 결과 타입
