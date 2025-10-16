@@ -618,3 +618,4 @@ const db = admin.firestore();
 
 **💪 여러분은 이 과정을 통해 현업에서 바로 활용 가능한 클라우드 백엔드 개발 역량을 갖추게 될 것입니다.**
 # Vercel Configuration Update
+# Vercel Environment Variables Test
