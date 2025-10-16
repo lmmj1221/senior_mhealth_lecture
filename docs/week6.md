@@ -9,6 +9,7 @@ Next.js 웹 애플리케이션을 Vercel 플랫폼에 배포하고, 환경 변�
 ## ✅ 배포 사전 체크리스트 (Pre-deployment Checklist)
 
 Vercel 배포를 시작하기 전에 아래 항목들이 완료되었는지 확인하세요.
+루트 폴더의 SETUP_GUIDE.md와 setup-project.sh를 참조 활용한다. 
 
 ### 🔐 1. Firebase 설정 완료 여부
 

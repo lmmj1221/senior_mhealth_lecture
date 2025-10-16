@@ -5,8 +5,8 @@
     "region": "asia-northeast3"
   },
   "firestore": {
-    "rules": "setup/scripts/firestore.rules",
-    "indexes": "setup/scripts/firestore.indexes.json"
+    "rules": "backend/functions/firestore.rules",
+    "indexes": "backend/functions/firestore.indexes.json"
   },
   "auth": {
     "data": "setup/scripts/users.json"

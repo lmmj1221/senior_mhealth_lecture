@@ -15,10 +15,6 @@ const nextConfig = {
     // optimizeCss: true, // 개발 환경에서 문제 발생하여 비활성화
   },
   
-  // 환경 변수
-  env: {
-    CUSTOM_KEY: process.env.CUSTOM_KEY,
-  },
   
   // 웹팩 설정
   webpack: (config, { dev, isServer }) => {

@@ -14,7 +14,7 @@ const bucket = admin.storage().bucket();
 async function uploadTestFile() {
   const userId = 'ZH4dY6r3y3fbABpoCVtVbDqqqzG3';
   const seniorId = 'test_senior_001';
-  const callId = 'test_call_1760580644588';
+  const callId = 'test_call_1760593050419';
 
   // 파일 시스템에서 직접 파일명 가져오기 (Unicode 정규화 문제 해결)
   const dataDir = path.join(__dirname, 'data');
