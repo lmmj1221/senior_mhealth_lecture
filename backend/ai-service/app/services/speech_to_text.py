@@ -12,6 +12,7 @@ import io
 
 from google.cloud import speech
 from pydantic import BaseModel, Field
+from pydub import AudioSegment
 
 # 로깅 설정
 logger = logging.getLogger(__name__)
@@ -60,10 +61,11 @@ class SpeechToTextService:
         logger.info("Google Cloud Speech-to-Text 서비스 초기화 완료")
 
     async def transcribe_audio(
-        self, 
-        audio_content: bytes, 
+        self,
+        audio_content: bytes,
         filename: str,
-        request: AudioRequest
+        request: AudioRequest,
+        storage_uri: str = None
     ) -> TranscriptionResponse:
         """음성 파일을 텍스트로 변환"""
         try:
@@ -74,25 +76,52 @@ class SpeechToTextService:
             if file_extension not in self.supported_formats:
                 raise ValueError(f"지원하지 않는 오디오 형식: {file_extension}")
 
+            # Storage URI가 있으면 긴 오디오 처리 사용
+            if storage_uri:
+                logger.info(f"Storage URI 사용 - 긴 오디오 처리: {storage_uri}")
+                return await self._transcribe_long_audio_from_storage(storage_uri, filename, request)
+
+            # M4A 파일을 WAV로 변환
+            if file_extension == '.m4a':
+                logger.info("M4A 파일 감지 - WAV로 변환 중...")
+                audio_segment = AudioSegment.from_file(io.BytesIO(audio_content), format="m4a")
+
+                # WAV로 변환 (16-bit PCM, 16kHz 샘플레이트)
+                wav_buffer = io.BytesIO()
+                audio_segment = audio_segment.set_frame_rate(16000).set_channels(1).set_sample_width(2)
+                audio_segment.export(wav_buffer, format="wav")
+                audio_content = wav_buffer.getvalue()
+                file_extension = '.wav'
+                logger.info(f"WAV 변환 완료 - 크기: {len(audio_content)} bytes")
+
+            # 오디오 크기 확인 (1분 이상이면 에러)
+            if len(audio_content) > 10 * 1024 * 1024:  # 10MB 이상은 대부분 1분 초과
+                raise ValueError("오디오가 너무 깁니다. Storage URI를 사용해주세요.")
+
             # 오디오 설정
             audio = speech.RecognitionAudio(content=audio_content)
             
             # 인식 설정 (화자 분리 기능 추가)
-            config = speech.RecognitionConfig(
-                encoding=self.supported_formats[file_extension],
-                sample_rate_hertz=16000,  # 기본값, 실제로는 자동 감지됨
-                language_code=request.language_code,
-                enable_automatic_punctuation=True,  # 자동 구두점 추가
-                enable_word_time_offsets=False,     # 단어별 시간 정보 비활성화
-                model="latest_long",                # 긴 오디오용 모델
-                use_enhanced=True,                  # 향상된 모델 사용
-                diarization_config=speech.SpeakerDiarizationConfig(
+            config_params = {
+                "encoding": speech.RecognitionConfig.AudioEncoding.LINEAR16 if file_extension == '.wav' else self.supported_formats[file_extension],
+                "language_code": request.language_code,
+                "enable_automatic_punctuation": True,  # 자동 구두점 추가
+                "enable_word_time_offsets": False,     # 단어별 시간 정보 비활성화
+                "model": "latest_long",                # 긴 오디오용 모델
+                "use_enhanced": True,                  # 향상된 모델 사용
+                "diarization_config": speech.SpeakerDiarizationConfig(
                     enable_speaker_diarization=True,
                     min_speaker_count=2,  # 최소 2명의 화자
                     max_speaker_count=3,  # 최대 3명의 화자
                 ),
-                enable_separate_recognition_per_channel=False,
-            )
+                "enable_separate_recognition_per_channel": False,
+            }
+
+            # WAV 파일은 샘플레이트 지정 (변환 시 16kHz로 설정했으므로)
+            if file_extension == '.wav':
+                config_params["sample_rate_hertz"] = 16000
+
+            config = speech.RecognitionConfig(**config_params)
 
             # Speech-to-Text API 호출
             response = self.client.recognize(config=config, audio=audio)
@@ -154,24 +183,138 @@ class SpeechToTextService:
             logger.error(f"음성 인식 중 오류 발생: {str(e)}")
             raise Exception(f"음성 인식 실패: {str(e)}")
 
-    async def transcribe_long_audio(
-        self, 
-        audio_content: bytes, 
+    async def _transcribe_long_audio_from_storage(
+        self,
+        storage_uri: str,
         filename: str,
         request: AudioRequest
     ) -> TranscriptionResponse:
-        """긴 오디오 파일 처리 (비동기 인식)"""
+        """Storage URI를 사용한 긴 오디오 처리 (LongRunningRecognize)"""
         try:
-            logger.info(f"긴 오디오 인식 시작 - 파일: {filename}")
+            logger.info(f"긴 오디오 인식 시작 - URI: {storage_uri}")
 
             # 파일 확장자 확인
             file_extension = Path(filename).suffix.lower()
-            if file_extension not in self.supported_formats:
-                raise ValueError(f"지원하지 않는 오디오 형식: {file_extension}")
 
-            # Cloud Storage에 임시 업로드가 필요한 경우
-            # 현재는 간단한 동기 처리로 구현
-            return await self.transcribe_audio(audio_content, filename, request)
+            # M4A 파일은 먼저 다운로드하여 WAV로 변환 후 임시 Storage에 업로드
+            if file_extension == '.m4a':
+                logger.info("M4A 파일 감지 - Storage에서 다운로드 후 WAV 변환...")
+
+                # Storage에서 파일 다운로드
+                from google.cloud import storage
+                storage_client = storage.Client()
+
+                # URI에서 bucket과 blob path 추출 (gs://bucket-name/path/to/file)
+                uri_parts = storage_uri.replace('gs://', '').split('/', 1)
+                bucket_name = uri_parts[0]
+                blob_path = uri_parts[1]
+
+                bucket = storage_client.bucket(bucket_name)
+                blob = bucket.blob(blob_path)
+                audio_content = blob.download_as_bytes()
+
+                logger.info(f"M4A 다운로드 완료: {len(audio_content)} bytes")
+
+                # WAV로 변환
+                audio_segment = AudioSegment.from_file(io.BytesIO(audio_content), format="m4a")
+                wav_buffer = io.BytesIO()
+                audio_segment = audio_segment.set_frame_rate(16000).set_channels(1).set_sample_width(2)
+                audio_segment.export(wav_buffer, format="wav")
+                wav_content = wav_buffer.getvalue()
+
+                logger.info(f"WAV 변환 완료: {len(wav_content)} bytes")
+
+                # 변환된 WAV를 임시 Storage 위치에 업로드
+                temp_wav_path = blob_path.replace('.m4a', '_converted.wav')
+                temp_blob = bucket.blob(temp_wav_path)
+                temp_blob.upload_from_string(wav_content, content_type='audio/wav')
+
+                logger.info(f"임시 WAV 업로드 완료: {temp_wav_path}")
+
+                # 변환된 WAV URI 사용
+                storage_uri = f"gs://{bucket_name}/{temp_wav_path}"
+                audio = speech.RecognitionAudio(uri=storage_uri)
+                encoding = speech.RecognitionConfig.AudioEncoding.LINEAR16
+                sample_rate_hertz = 16000
+            else:
+                # M4A가 아닌 경우 Storage URI 직접 사용
+                audio = speech.RecognitionAudio(uri=storage_uri)
+                encoding = self.supported_formats.get(file_extension, speech.RecognitionConfig.AudioEncoding.LINEAR16)
+                sample_rate_hertz = None
+
+            # 인식 설정
+            config_params = {
+                "encoding": encoding,
+                "language_code": request.language_code,
+                "enable_automatic_punctuation": True,
+                "model": "latest_long",
+                "use_enhanced": True,
+                "diarization_config": speech.SpeakerDiarizationConfig(
+                    enable_speaker_diarization=True,
+                    min_speaker_count=2,
+                    max_speaker_count=3,
+                ),
+            }
+
+            if sample_rate_hertz:
+                config_params["sample_rate_hertz"] = sample_rate_hertz
+
+            config = speech.RecognitionConfig(**config_params)
+
+            # LongRunningRecognize API 호출
+            logger.info("LongRunningRecognize API 호출 중...")
+            operation = self.client.long_running_recognize(config=config, audio=audio)
+
+            # 결과 대기 (최대 5분)
+            logger.info("음성 인식 처리 중... (최대 5분 소요)")
+            response = operation.result(timeout=300)
+
+            # 결과 처리 (기존과 동일)
+            if not response.results:
+                logger.warning("음성 인식 결과가 없습니다")
+                return TranscriptionResponse(
+                    transcript="",
+                    confidence=0.0,
+                    language_code=request.language_code
+                )
+
+            # 전체 트랜스크립트 및 화자별 세그먼트 수집
+            full_transcript = []
+            speaker_segments = []
+            total_confidence = 0.0
+            result_count = 0
+
+            for result in response.results:
+                best_alternative = result.alternatives[0]
+                full_transcript.append(best_alternative.transcript)
+                total_confidence += best_alternative.confidence
+                result_count += 1
+
+                if hasattr(best_alternative, 'words'):
+                    for word_info in best_alternative.words:
+                        if hasattr(word_info, 'speaker_tag'):
+                            speaker_segments.append({
+                                'word': word_info.word,
+                                'speaker': word_info.speaker_tag,
+                                'start_time': word_info.start_time.total_seconds() if hasattr(word_info, 'start_time') else None,
+                                'end_time': word_info.end_time.total_seconds() if hasattr(word_info, 'end_time') else None
+                            })
+
+            transcript = " ".join(full_transcript)
+            avg_confidence = total_confidence / result_count if result_count > 0 else 0.0
+
+            senior_transcript, guardian_transcript = self._separate_speakers(speaker_segments, transcript)
+
+            logger.info(f"긴 오디오 인식 완료 - 신뢰도: {avg_confidence:.2f}, 텍스트 길이: {len(transcript)}")
+
+            return TranscriptionResponse(
+                transcript=transcript,
+                confidence=avg_confidence,
+                language_code=request.language_code,
+                speaker_segments=speaker_segments if speaker_segments else None,
+                senior_transcript=senior_transcript,
+                guardian_transcript=guardian_transcript
+            )
 
         except Exception as e:
             logger.error(f"긴 오디오 인식 중 오류: {str(e)}")

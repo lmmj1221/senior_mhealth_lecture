@@ -242,7 +242,9 @@ async def transcribe_audio(
 
 @app.post("/analyze-audio", response_model=AnalysisResponse)
 async def analyze_audio(
-    file: UploadFile = File(...),
+    file: UploadFile = File(None),
+    storage_uri: str = Form(default=None),
+    filename: str = Form(default=None),
     user_id: str = Form(default="anonymous"),
     session_id: str = Form(default=""),
     language_code: str = Form(default="ko-KR"),
@@ -251,46 +253,71 @@ async def analyze_audio(
 ):
     """
     음성 파일을 텍스트로 변환한 후 정신건강 분석 수행
-    
+
     STT + 텍스트 분석을 한 번에 처리하는 통합 엔드포인트
+    storage_uri가 제공되면 Storage에서 직접 처리 (긴 오디오 지원)
     """
     global stt_service, analyzer
-    
+
     if not stt_service or not analyzer:
         logger.error("서비스가 초기화되지 않음")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="분석 서비스가 준비되지 않았습니다"
         )
-    
+
     try:
-        logger.info(f"음성 분석 요청 - 사용자: {user_id}, 파일: {file.filename}")
-        
-        # 1단계: 음성을 텍스트로 변환
-        if not file.filename:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="파일명이 없습니다"
+        # Storage URI가 있으면 긴 오디오 처리
+        if storage_uri:
+            logger.info(f"음성 분석 요청 (Storage URI) - 사용자: {user_id}, URI: {storage_uri}")
+
+            if not filename:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="filename이 필요합니다"
+                )
+
+            # 음성 인식 (Storage URI 사용)
+            audio_request = AudioRequest(
+                user_id=user_id,
+                session_id=session_id,
+                language_code=language_code
             )
-        
-        audio_content = await file.read()
-        
-        # 파일 유효성 검사
-        validation = stt_service.validate_audio_file(file.filename, len(audio_content))
-        if not validation["is_valid"]:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"파일 유효성 검사 실패: {', '.join(validation['errors'])}"
+
+            transcription = await stt_service.transcribe_audio(
+                b'',  # 빈 바이트, URI 사용
+                filename,
+                audio_request,
+                storage_uri=storage_uri
             )
-        
-        # 음성 인식
-        audio_request = AudioRequest(
-            user_id=user_id,
-            session_id=session_id,
-            language_code=language_code
-        )
-        
-        transcription = await stt_service.transcribe_audio(audio_content, file.filename, audio_request)
+        else:
+            # 파일 업로드 처리
+            logger.info(f"음성 분석 요청 - 사용자: {user_id}, 파일: {file.filename}")
+
+            if not file or not file.filename:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="파일 또는 storage_uri가 필요합니다"
+                )
+
+            audio_content = await file.read()
+
+            # 파일 유효성 검사
+            validation = stt_service.validate_audio_file(file.filename, len(audio_content))
+            if not validation["is_valid"]:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"파일 유효성 검사 실패: {', '.join(validation['errors'])}"
+                )
+
+            # 음성 인식
+            audio_request = AudioRequest(
+                user_id=user_id,
+                session_id=session_id,
+                language_code=language_code
+            )
+
+            transcription = await stt_service.transcribe_audio(audio_content, file.filename, audio_request)
         
         if not transcription.transcript or len(transcription.transcript.strip()) == 0:
             raise HTTPException(
