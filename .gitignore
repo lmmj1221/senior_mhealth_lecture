@@ -231,3 +231,5 @@ flutter_*_stable.tar.xz
 # tasks.json
 # tasks/
 setup/
+
+.vercel

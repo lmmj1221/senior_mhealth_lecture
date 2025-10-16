@@ -9,7 +9,7 @@ Next.js 웹 애플리케이션을 Vercel 플랫폼에 배포하고, 환경 변�
 ## ✅ 배포 사전 체크리스트 (Pre-deployment Checklist)
 
 Vercel 배포를 시작하기 전에 아래 항목들이 완료되었는지 확인하세요.
-루트 폴더의 SETUP_GUIDE.md와 setup-project.sh를 참조 활용한다. 
+루트 폴더의 SETUP_GUIDE.md와 setup-project.sh를 참조 활용한다.
 
 ### 🔐 1. Firebase 설정 완료 여부
 
@@ -690,15 +690,110 @@ CLI 질문에 다음과 같이 답변합니다.
 > **⚠️ 중요**: 첫 배포는 환경 변수 없이 진행되므로 앱이 정상 작동하지 않습니다!
 > 반드시 이 단계를 완료해야 합니다.
 
-**설명:**
+#### 4.1 Vercel Dashboard 접속 및 프로젝트 선택
 1.  브라우저에서 [Vercel Dashboard](https://vercel.com/dashboard)에 접속합니다.
-2.  방금 배포한 프로젝트를 선택합니다.
+2.  방금 배포한 프로젝트(`senior-mhealth`)를 선택합니다.
 3.  `Settings` 탭 > `Environment Variables` 메뉴로 이동합니다.
-4.  `frontend/web/.env.local` 파일에 있는 모든 `NEXT_PUBLIC_`으로 시작하는 변수들을 하나씩 추가합니다.
-    - **Key**: 변수 이름 (예: `NEXT_PUBLIC_FIREBASE_API_KEY`)
-    - **Value**: 변수의 값
-    - **Environment**: `Production`, `Preview`, `Development` 모두 체크
-5.  각 변수를 추가할 때마다 `Save` 버튼을 클릭합니다. (최소 6개 필수)
+
+#### 4.2 필수 환경 변수 추가
+아래 **9개 환경 변수**를 모두 추가해야 합니다. 각 변수마다 다음 단계를 반복하세요:
+
+**공통 입력 방법:**
+- **Key**: 변수 이름 (아래 표 참조)
+- **Value**: 변수 값 (아래 표 참조)
+- **Environment**: `Production`, `Preview`, `Development` **모두 체크** ✅
+- 입력 후 `Save` 버튼 클릭
+
+---
+
+#### 📋 **필수 환경 변수 목록** (총 9개)
+
+| 순서 | Key | Value | 설명 |
+|-----|-----|-------|------|
+| **1** | `NEXT_PUBLIC_FIREBASE_API_KEY` | `AIzaSyAEHDvG9JhgJz8CPJgDRTFGmU5Km54cNVE` | Firebase 웹 API 키 |
+| **2** | `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | `credible-runner-474101-f6.firebaseapp.com` | Firebase 인증 도메인 |
+| **3** | `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | `credible-runner-474101-f6` | Firebase 프로젝트 ID |
+| **4** | `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | `credible-runner-474101-f6.firebasestorage.app` | Firebase Storage 버킷 |
+| **5** | `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | `117743917401` | Firebase 메시징 발신자 ID |
+| **6** | `NEXT_PUBLIC_FIREBASE_APP_ID` | `1:117743917401:web:df7792d2b72540e1ef9448` | Firebase 앱 ID |
+| **7** | `NEXT_PUBLIC_API_URL` | `https://asia-northeast3-credible-runner-474101-f6.cloudfunctions.net/api` | Cloud Functions API URL |
+| **8** | `NEXT_PUBLIC_CLOUD_RUN_API_URL` | `https://senior-mhealth-api-117743917401.asia-northeast3.run.app` | Cloud Run API 서비스 URL |
+| **9** | `NEXT_PUBLIC_CLOUD_RUN_AI_URL` | `https://senior-mhealth-ai-117743917401.asia-northeast3.run.app` | Cloud Run AI 서비스 URL |
+
+---
+
+#### 4.3 단계별 입력 가이드
+
+**변수 1: Firebase API Key**
+```
+Key: NEXT_PUBLIC_FIREBASE_API_KEY
+Value: AIzaSyAEHDvG9JhgJz8CPJgDRTFGmU5Km54cNVE
+Environment: Production ✅ Preview ✅ Development ✅
+```
+
+**변수 2: Firebase Auth Domain**
+```
+Key: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+Value: credible-runner-474101-f6.firebaseapp.com
+Environment: Production ✅ Preview ✅ Development ✅
+```
+
+**변수 3: Firebase Project ID**
+```
+Key: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+Value: credible-runner-474101-f6
+Environment: Production ✅ Preview ✅ Development ✅
+```
+
+**변수 4: Firebase Storage Bucket**
+```
+Key: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+Value: credible-runner-474101-f6.firebasestorage.app
+Environment: Production ✅ Preview ✅ Development ✅
+```
+
+**변수 5: Firebase Messaging Sender ID**
+```
+Key: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+Value: 117743917401
+Environment: Production ✅ Preview ✅ Development ✅
+```
+
+**변수 6: Firebase App ID**
+```
+Key: NEXT_PUBLIC_FIREBASE_APP_ID
+Value: 1:117743917401:web:df7792d2b72540e1ef9448
+Environment: Production ✅ Preview ✅ Development ✅
+```
+
+**변수 7: Cloud Functions API URL**
+```
+Key: NEXT_PUBLIC_API_URL
+Value: https://asia-northeast3-credible-runner-474101-f6.cloudfunctions.net/api
+Environment: Production ✅ Preview ✅ Development ✅
+```
+
+**변수 8: Cloud Run API URL**
+```
+Key: NEXT_PUBLIC_CLOUD_RUN_API_URL
+Value: https://senior-mhealth-api-117743917401.asia-northeast3.run.app
+Environment: Production ✅ Preview ✅ Development ✅
+```
+
+**변수 9: Cloud Run AI URL**
+```
+Key: NEXT_PUBLIC_CLOUD_RUN_AI_URL
+Value: https://senior-mhealth-ai-117743917401.asia-northeast3.run.app
+Environment: Production ✅ Preview ✅ Development ✅
+```
+
+#### 4.4 입력 완료 확인
+모든 9개 변수를 입력한 후:
+1. Environment Variables 페이지에서 **9개 변수**가 모두 표시되는지 확인
+2. 각 변수가 `Production`, `Preview`, `Development` 환경에 모두 적용되었는지 확인
+3. 오타나 공백이 없는지 재확인
+
+> **💡 팁**: 복사-붙여넣기 시 앞뒤 공백이 들어가지 않도록 주의하세요!
 
 ---
 
@@ -717,22 +812,28 @@ pwd
 vercel --prod
 ```
 
-#### 5.2 배포 완료 확인 (수동)
+#### 5.2 배포 완료 확인
 1.  브라우저에서 **Production URL**에 다시 접속합니다.
 2.  페이지가 정상적으로 로드되고 Firebase 로그인 화면이 표시되는지 확인합니다.
 3.  브라우저 개발자 도구 콘솔에서 `console.log(process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID)`를 실행하여 프로젝트 ID가 올바르게 출력되는지 확인합니다.
 
 ---
 
-### Step 6: GitHub 연동 및 자동 배포 (선택 사항)
+### Step 6: GitHub 연동 및 자동 배포
 
 **설명:**
 GitHub 저장소와 Vercel 프로젝트를 연결하면, 코드를 `push`할 때마다 자동으로 배포가 실행됩니다.
 
-#### 6.1 Vercel에서 GitHub 연동 (수동)
-1.  Vercel Dashboard > 프로젝트 선택 > `Settings` 탭 > `Git` 메뉴로 이동합니다.
-2.  "Connect Git Repository"를 클릭하고 GitHub 저장소를 연결합니다.
-3.  **Root Directory**를 `frontend/web`으로 정확하게 설정합니다. 이 설정이 틀리면 빌드가 실패합니다.
+#### 6.1 Vercel에서 GitHub 연동
+
+> **⚠️ 중요**: GitHub 연동 시 Root Directory 설정이 자동으로 되지 않는 경우가 있습니다!
+
+**Vercel CLI로 GitHub 연결**
+```bash
+# frontend/web 디렉토리에서 실행
+vercel --prod --confirm
+vercel git connect
+```
 
 #### 6.2 자동 배포 테스트 (자동화)
 1.  로컬에서 코드를 약간 수정합니다.
