@@ -4,13 +4,13 @@ const serviceAccount = require('./backend/service-account-key.json');
 // Firebase Admin 초기화
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  storageBucket: 'my-project-54928-b9704.firebasestorage.app'
+  storageBucket: 'credible-runner-474101-f6.firebasestorage.app'
 });
 
 const db = admin.firestore();
 
 async function createTestCall() {
-  const userId = '7wll6D15YZgVrL7jEO1dJhyCUKG3';
+  const userId = 'ZH4dY6r3y3fbABpoCVtVbDqqqzG3'; // 새로 생성된 사용자 UID
   const seniorId = 'test_senior_001';
   const callId = 'test_call_' + Date.now();
 

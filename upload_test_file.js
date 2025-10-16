@@ -6,18 +6,26 @@ const serviceAccount = require('./backend/service-account-key.json');
 // Firebase Admin 초기화
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  storageBucket: 'my-project-54928-b9704.firebasestorage.app'
+  storageBucket: 'credible-runner-474101-f6.firebasestorage.app'
 });
 
 const bucket = admin.storage().bucket();
 
 async function uploadTestFile() {
-  const userId = '7wll6D15YZgVrL7jEO1dJhyCUKG3';
+  const userId = 'ZH4dY6r3y3fbABpoCVtVbDqqqzG3';
   const seniorId = 'test_senior_001';
-  const callId = 'test_call_1760506267900';
-  const fileName = '통화 녹음 어머니_250505_122325.m4a';
+  const callId = 'test_call_1760580644588';
 
-  const localFilePath = path.join(__dirname, 'data', fileName);
+  // 파일 시스템에서 직접 파일명 가져오기 (Unicode 정규화 문제 해결)
+  const dataDir = path.join(__dirname, 'data');
+  const files = fs.readdirSync(dataDir);
+  const fileName = files.find(f => f.includes('250505'));
+
+  if (!fileName) {
+    throw new Error('Audio file not found in data directory');
+  }
+
+  const localFilePath = path.join(dataDir, fileName);
   const storagePath = `calls/${userId}/${seniorId}/${callId}/${fileName}`;
 
   try {

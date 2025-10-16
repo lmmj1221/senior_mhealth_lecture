@@ -113,25 +113,32 @@ const auth = admin.auth();
 const FormData = require('form-data');
 
 /**
- * Storage 트리거 - 음성 파일 자동 처리
+ * Storage 트리거 - 음성 파일 자동 처리 (v2)
  */
-const runtimeOpts = {
-  timeoutSeconds: 540,
-  memory: '1GB'
-}
+const {onObjectFinalized} = require('firebase-functions/v2/storage');
 
-exports.processVoiceFile = functions.region('asia-northeast3').runWith(runtimeOpts).storage
-  .object()
-  .onFinalize(async (object) => {
+exports.processVoiceFile = onObjectFinalized({
+  region: 'asia-northeast3',
+  timeoutSeconds: 540,
+  memory: '1GiB',
+  bucket: 'credible-runner-474101-f6.firebasestorage.app'
+}, async (event) => {
+    const object = event.data;
     const filePath = object.name;
     const bucketName = object.bucket;
     const metadata = object.metadata || {};
-    
-    console.log('🔔 Storage 트리거 발생:', filePath);
+
+    functions.logger.info('🔔 Storage 트리거 발생:', filePath);
     
     // 음성 파일 경로인지 확인 (calls/{userId}/{seniorId}/{callId}/filename)
     if (!filePath.startsWith('calls/')) {
-      console.log('❌ 음성 파일이 아님:', filePath);
+      functions.logger.info('❌ 음성 파일이 아님:', filePath);
+      return null;
+    }
+
+    // AI 서비스가 생성한 변환 파일은 무시 (중복 트리거 방지)
+    if (filePath.includes('_converted.wav')) {
+      functions.logger.info('⏭️ AI 서비스 변환 파일 무시:', filePath);
       return null;
     }
 
@@ -141,26 +148,33 @@ exports.processVoiceFile = functions.region('asia-northeast3').runWith(runtimeOp
       // 1. 파일 경로에서 정보 추출
       const pathParts = filePath.split('/');
       if (pathParts.length < 5) {
-        console.log('❌ 잘못된 경로 구조:', filePath);
+        functions.logger.info('❌ 잘못된 경로 구조:', filePath);
         return null;
       }
-      
+
       const userId = pathParts[1];
       const seniorId = pathParts[2];
       const callId = pathParts[3];
       const fileName = pathParts[4] || 'unknown';
-      
-      console.log('📋 파일 정보:', { userId, seniorId, callId, fileName });
+
+      functions.logger.info('📋 파일 정보:', { userId, seniorId, callId, fileName });
       
       // 2. Firestore에서 해당 통화 문서 찾기 (변수 정의 후)
       callDocRef = db.collection('users').doc(userId).collection('calls').doc(callId);
       const callDoc = await callDocRef.get();
-      
+
       if (!callDoc.exists) {
-        console.log('❌ 통화 문서를 찾을 수 없음:', callId);
+        functions.logger.info('❌ 통화 문서를 찾을 수 없음:', callId);
         return null;
       }
-      
+
+      // 중복 처리 방지: 이미 처리 중이거나 완료된 경우 스킵
+      const currentStatus = callDoc.data().analysisStatus;
+      if (currentStatus === 'processing' || currentStatus === 'completed') {
+        functions.logger.info('⏭️ 이미 처리됨:', callId, '상태:', currentStatus);
+        return null;
+      }
+
       // 3. Firestore 문서 상태 업데이트
       await callDocRef.update({
         status: 'uploaded',
@@ -170,17 +184,17 @@ exports.processVoiceFile = functions.region('asia-northeast3').runWith(runtimeOp
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
       });
       
-      console.log('✅ Firestore 업데이트 완료:', callId);
-      
+      functions.logger.info('✅ Firestore 업데이트 완료:', callId);
+
       // 4. AI 분석 서비스 호출
       const aiServiceUrl = process.env.CLOUD_RUN_AI_URL || functions.config().services?.ai_url;
 
       if (aiServiceUrl) {
-        console.log('🤖 AI 분석 요청 시작:', aiServiceUrl);
+        functions.logger.info('🤖 AI 분석 요청 시작:', aiServiceUrl);
 
         // 4-1. Storage URI 생성 (LongRunningRecognize 사용)
         const storageUri = `gs://${bucketName}/${filePath}`;
-        console.log('📦 Storage URI:', storageUri);
+        functions.logger.info('📦 Storage URI:', storageUri);
 
         // 4-2. multipart/form-data 요청 생성 (Storage URI 전송)
         const form = new FormData();
@@ -202,7 +216,7 @@ exports.processVoiceFile = functions.region('asia-northeast3').runWith(runtimeOp
             }
           );
           
-          console.log('🎉 AI 분석 요청 성공:', response.data);
+          functions.logger.info('🎉 AI 분석 요청 성공:', response.data);
           
           // 4-4. 분석 결과 Firestore에 저장
           await callDocRef.update({
@@ -215,10 +229,10 @@ exports.processVoiceFile = functions.region('asia-northeast3').runWith(runtimeOp
         } catch (aiError) {
           let errorMessage = aiError.message;
           if (aiError.response) {
-            console.error('❌ AI 서비스 응답 오류:', aiError.response.status, aiError.response.data);
+            functions.logger.error('❌ AI 서비스 응답 오류:', aiError.response.status, aiError.response.data);
             errorMessage = `AI Service Error: ${aiError.response.status} - ${JSON.stringify(aiError.response.data)}`;
           } else {
-            console.error('❌ AI 분석 요청 실패:', errorMessage);
+            functions.logger.error('❌ AI 분석 요청 실패:', errorMessage);
           }
           
           // 분석 요청 실패시 상태 업데이트
@@ -229,7 +243,7 @@ exports.processVoiceFile = functions.region('asia-northeast3').runWith(runtimeOp
           });
         }
       } else {
-        console.log('⚠️ AI 서비스 URL이 설정되지 않음');
+        functions.logger.info('⚠️ AI 서비스 URL이 설정되지 않음');
         
         // AI 서비스 URL이 없을 때 상태 업데이트
         await callDocRef.update({
@@ -242,14 +256,14 @@ exports.processVoiceFile = functions.region('asia-northeast3').runWith(runtimeOp
       return { success: true, callId, status: 'processed' };
       
     } catch (error) {
-      console.error('❌ processVoiceFile 오류:', error);
+      functions.logger.error('❌ processVoiceFile 오류:', error);
       // 오류 발생 시에도 Firestore에 상태 기록 시도
       if (callDocRef) {
         await callDocRef.update({
           analysisStatus: 'function_failed',
           errorMessage: error.message,
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        }).catch(err => console.error('❌ Firestore 오류 상태 업데이트 실패:', err));
+        }).catch(err => functions.logger.error('❌ Firestore 오류 상태 업데이트 실패:', err));
       }
       return { success: false, error: error.message };
     }
@@ -350,18 +364,24 @@ function sendError(res, statusCode, message, error = null) {
 // ============================================================================
 
 /**
- * 테스트용 Hello World
+ * 테스트용 Hello World (v2)
  * 개발 환경에서만 사용 (프로덕션에서는 삭제)
  */
-exports.helloWorld = functions.https.onRequest((request, response) => {
+const {onRequest} = require('firebase-functions/v2/https');
+
+exports.helloWorld = onRequest({
+  region: 'asia-northeast3'
+}, (request, response) => {
   functions.logger.info("Hello World 함수 호출됨", { structuredData: true });
   response.send("Hello from Senior mHealth Backend! 🏥💪");
 });
 
 /**
- * 테스트용 데이터베이스 연결 확인
+ * 테스트용 데이터베이스 연결 확인 (v2)
  */
-exports.testDB = functions.https.onRequest(async (request, response) => {
+exports.testDB = onRequest({
+  region: 'asia-northeast3'
+}, async (request, response) => {
   try {
     // Firestore 연결 테스트
     const testDoc = await db.collection('test').doc('connection').get();

@@ -22,8 +22,8 @@
     ]
   },
   "storage": {
-    "rules": "setup/scripts/storage.rules",
-    "bucket": "senior-mhealth-lee.appspot.com"
+    "rules": "backend/functions/storage.rules",
+    "bucket": "credible-runner-474101-f6.firebasestorage.app"
   },
   "emulators": {
     "auth": {

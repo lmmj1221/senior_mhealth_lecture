@@ -24,9 +24,13 @@
    ↓
 3. Firebase Storage에 음성 파일 업로드
    ↓
-4. Firestore 업데이트 확인
+4. processVoiceFile 트리거 자동 실행
    ↓
-5. Web App에서 데이터 표시
+5. AI 분석 완료 대기 (1-2분)
+   ↓
+6. Firestore 분석 결과 확인
+   ↓
+7. Web App에서 데이터 표시
 ```
 
 ---
@@ -251,7 +255,7 @@ async function uploadTestFile() {
     console.log('   Storage path:', storagePath);
     console.log('\n🔔 Storage trigger should fire now...');
     console.log('   Check Firebase Functions logs:');
-    console.log('   firebase functions:log --project my-project-54928-b9704');
+    console.log('   gcloud functions logs read processVoiceFile --region=asia-northeast3 --limit=50');
 
     console.log('\n📊 Check Firestore for updates:');
     console.log('   Path: users/' + userId + '/calls/' + callId);
@@ -290,7 +294,7 @@ node upload_test_file.js
 
 🔔 Storage trigger should fire now...
    Check Firebase Functions logs:
-   firebase functions:log --project ${GCP_PROJECT_ID}
+   gcloud functions logs read processVoiceFile --region=asia-northeast3 --limit=50
 
 📊 Check Firestore for updates:
    Path: users/<your-test-user-uid>/calls/test_call_<timestamp>
@@ -300,7 +304,10 @@ node upload_test_file.js
 
 ---
 
-## Step 5: Firestore 데이터 확인
+## Step 5: AI 분석 완료 확인
+
+> **중요**: Storage에 파일을 업로드하면 `processVoiceFile` 트리거가 자동으로 실행됩니다.
+> AI 분석이 완료될 때까지 **약 1-2분** 소요됩니다.
 
 ### 5.1 스크립트 작성
 
@@ -357,6 +364,25 @@ async function checkFirestore() {
     console.log('   filePath:', data.filePath);
     console.log('   updatedAt:', data.updatedAt?.toDate?.());
 
+    // AI 분석 결과 확인
+    if (data.analysisResult) {
+      console.log('\n✅ AI 분석 완료!');
+      console.log('   우울증 점수:', data.analysisResult.depression_score);
+      console.log('   불안 점수:', data.analysisResult.anxiety_score);
+      console.log('   인지 점수:', data.analysisResult.cognitive_score);
+      console.log('   신뢰도:', data.analysisResult.confidence);
+      console.log('   감정 상태:', data.analysisResult.emotional_state);
+      console.log('   주요 우려사항:', data.analysisResult.key_concerns?.length || 0, '개');
+    } else if (data.analysisStatus === 'processing') {
+      console.log('\n⏳ AI 분석 진행 중...');
+      console.log('   잠시 후 다시 확인해주세요 (약 1-2분 소요)');
+    } else if (data.analysisStatus === 'failed') {
+      console.log('\n❌ AI 분석 실패');
+      console.log('   에러 메시지:', data.errorMessage);
+    } else {
+      console.log('\n⏳ AI 분석 대기 중...');
+    }
+
   } catch (error) {
     console.error('❌ Error checking Firestore:', error);
     throw error;
@@ -377,35 +403,43 @@ checkFirestore()
 node check_firestore.js
 ```
 
-**예상 출력:**
+**예상 출력 (AI 분석 완료 전):**
 ```
 📊 Checking Firestore for call document...
    Path: users/<your-test-user-uid>/calls/test_call_<timestamp>
 
 ✅ Document found!
 
-📄 Document data:
-{
-  "userId": "<your-test-user-uid>",
-  "seniorId": "test_senior_001",
-  "fileName": "통화 녹음 어머니_250505_122325.m4a",
-  "status": "pending",
-  "analysisStatus": "pending",
-  "metadata": {
-    "device": "test",
-    "version": "1.0.0"
-  },
-  "createdAt": { "_seconds": <timestamp>, "_nanoseconds": <nanoseconds> },
-  "recordedAt": { "_seconds": <timestamp>, "_nanoseconds": <nanoseconds> },
-  "updatedAt": { "_seconds": <timestamp>, "_nanoseconds": <nanoseconds> }
-}
+🔍 Key fields:
+   status: uploaded
+   analysisStatus: processing
+   fileName: 통화 녹음 어머니_250505_122325.m4a
+   filePath: calls/<your-test-user-uid>/test_senior_001/test_call_<timestamp>/통화 녹음 어머니_250505_122325_converted.wav
+
+⏳ AI 분석 진행 중...
+   잠시 후 다시 확인해주세요 (약 1-2분 소요)
+```
+
+**예상 출력 (AI 분석 완료 후):**
+```
+📊 Checking Firestore for call document...
+   Path: users/<your-test-user-uid>/calls/test_call_<timestamp>
+
+✅ Document found!
 
 🔍 Key fields:
-   status: pending
-   analysisStatus: pending
+   status: uploaded
+   analysisStatus: completed
    fileName: 통화 녹음 어머니_250505_122325.m4a
-   filePath: undefined
-   updatedAt: <ISO-timestamp>
+   filePath: calls/<your-test-user-uid>/test_senior_001/test_call_<timestamp>/통화 녹음 어머니_250505_122325_converted.wav
+
+✅ AI 분석 완료!
+   우울증 점수: 65
+   불안 점수: 75
+   인지 점수: 60
+   신뢰도: 0.8
+   감정 상태: 불안정하며, 좌절감과 답답함을 느끼고 있습니다...
+   주요 우려사항: 5 개
 ```
 
 ---
@@ -454,8 +488,17 @@ Data:
 - userId: <your-test-user-uid>
 - seniorId: test_senior_001
 - fileName: 통화 녹음 어머니_250505_122325.m4a
-- status: pending
-- analysisStatus: pending
+- status: uploaded
+- analysisStatus: completed ✅
+- filePath: calls/<uid>/<seniorId>/<callId>/통화 녹음 어머니_250505_122325_converted.wav
+- analysisResult: ✅
+  - depression_score: 65
+  - anxiety_score: 75
+  - cognitive_score: 60
+  - confidence: 0.8
+  - emotional_state: "..."
+  - key_concerns: [...]
+  - recommendations: [...]
 - createdAt: [timestamp]
 - updatedAt: [timestamp]
 ```
@@ -582,11 +625,15 @@ async function createSeniorProfiles() {
 - [ ] `upload_test_file.js` 작성 및 실행
 - [ ] Storage에 파일 업로드 확인
 - [ ] `check_firestore.js` 작성 및 실행
-- [ ] Firestore 데이터 확인
+- [ ] **AI 분석 완료 확인** ⭐ 중요!
+  - [ ] `analysisStatus: completed` 확인
+  - [ ] `analysisResult` 데이터 존재 확인
+  - [ ] 우울증/불안/인지 점수 확인
+  - [ ] 신뢰도(confidence) 확인
 - [ ] Firebase Console에서 모든 데이터 확인
   - [ ] Authentication
-  - [ ] Firestore
-  - [ ] Storage
+  - [ ] Firestore (분석 결과 포함)
+  - [ ] Storage (m4a 및 _converted.wav 파일)
 
 ---
 

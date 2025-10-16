@@ -160,7 +160,7 @@ cat .env | grep FIREBASE
     - [ ] Firestore: `users/{userId}/calls/{callId}` 문서 생성
     - [ ] Storage: 음성 파일 업로드
     - [ ] 데이터 확인: Firebase Console에서 검증
-
+    - 업로드된 음성데이터에 대한 분석이 완료되어 firestore에 분석결과가 저장되어야 한다.
 
 
 ### 🔑 6. Vercel 계정 및 CLI 준비
