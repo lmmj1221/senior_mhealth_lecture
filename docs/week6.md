@@ -824,9 +824,23 @@ vercel --prod
 **설명:**
 GitHub 저장소와 Vercel 프로젝트를 연결하면, 코드를 `push`할 때마다 자동으로 배포가 실행됩니다.
 
-#### 6.1 Vercel에서 GitHub 연동
+#### 6.1 Vercel에서 GitHub 연동 ✅ 완료
 
-> **⚠️ 중요**: GitHub 연동 시 Root Directory 설정이 자동으로 되지 않는 경우가 있습니다!
+> **✅ 완료 내용**
+> - **GitHub Repository**: `LeeSeogMin/senior_mhealth_lecture`
+> - **Vercel Project**: `senior-mhealth`
+> - **Root Directory**: `frontend/web`
+> - **환경 변수**: 9개 설정 완료
+> - **Production URL**: https://senior-mhealth.vercel.app
+> - **자동 배포**: GitHub push 시 자동 배포 작동 확인
+
+> **⚠️ 중요**: 모노레포 프로젝트의 경우 Root Directory 설정이 필수입니다!
+>
+> **Root Directory 설정 방법:**
+> 1. Vercel Dashboard → 프로젝트 선택
+> 2. Settings → General → Root Directory
+> 3. 입력: `frontend/web` (정확히 입력, 슬래시 사용)
+> 4. Save 버튼 클릭!
 
 **Vercel CLI로 GitHub 연결**
 ```bash
@@ -835,7 +849,7 @@ vercel --prod --confirm
 vercel git connect
 ```
 
-#### 6.2 자동 배포 테스트 (자동화)
+#### 6.2 자동 배포 테스트 (자동화) ✅ 완료
 1.  로컬에서 코드를 약간 수정합니다.
     ```bash
     # frontend/web 디렉토리에서 실행
