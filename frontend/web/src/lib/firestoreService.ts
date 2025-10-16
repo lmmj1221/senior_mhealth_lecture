@@ -53,6 +53,9 @@ export class FirestoreService {
         console.log('📞 FirestoreService: Found call:', doc.id, data);
 
         // Convert Firestore document to Call interface
+        // Check both 'analysis' and 'analysisResult' fields
+        const analysisData = data.analysis || data.analysisResult;
+
         calls.push({
           callId: doc.id,
           userId: user.uid,
@@ -64,13 +67,13 @@ export class FirestoreService {
           duration: data.duration || 0,
           mimeType: data.mimeType || 'audio/wav',
           status: data.status || 'uploaded',
-          hasAnalysis: data.hasAnalysis || false,
+          hasAnalysis: !!(data.hasAnalysis || analysisData),
           analysisCompletedAt: data.analysisCompletedAt?.toDate() || null,
           createdAt: data.createdAt?.toDate() || new Date(),
           updatedAt: data.updatedAt?.toDate() || new Date(),
           recordedAt: data.recordedAt?.toDate() || new Date(),
           metadata: data.metadata || {},
-          analysis: data.analysis
+          analysis: analysisData
         });
       });
 
@@ -258,11 +261,73 @@ export class FirestoreService {
       console.log('🔄 Fetching calls and analyses from Firestore...');
 
       const calls = await this.getUserCalls();
-      const analyses = await this.getUserAnalyses(); // This now handles creating basic analyses
+
+      // Extract analyses from calls that have analysisResult embedded
+      const analyses: Analysis[] = [];
+
+      for (const call of calls) {
+        if (call.analysis) {
+          console.log('📊 Converting call analysis to Analysis object:', call.callId);
+
+          // Convert the analysisResult from the call into an Analysis interface
+          const analysisFromCall: Analysis = {
+            analysisId: `analysis-${call.callId}`,
+            callId: call.callId,
+            result: {
+              transcription: {
+                text: call.analysis.transcription || '',
+                confidence: call.analysis.confidence || 0
+              },
+              mentalHealthAnalysis: {
+                depression: {
+                  score: call.analysis.depression_score || 0,
+                  riskLevel: this.getRiskLevel(call.analysis.depression_score || 0),
+                  indicators: call.analysis.key_concerns || []
+                },
+                cognitive: {
+                  score: call.analysis.cognitive_score || 0,
+                  riskLevel: this.getRiskLevel(call.analysis.cognitive_score || 0)
+                },
+                anxiety: {
+                  score: call.analysis.anxiety_score || 0,
+                  riskLevel: this.getRiskLevel(call.analysis.anxiety_score || 0)
+                }
+              },
+              voicePatterns: {
+                energy: call.analysis.energy || 0,
+                pitch_variation: call.analysis.pitch_variation || 0
+              },
+              summary: call.analysis.emotional_state || '',
+              recommendations: call.analysis.recommendations || []
+            },
+            metadata: {
+              processingTime: 0,
+              confidence: call.analysis.confidence || 0,
+              version: '1.0'
+            },
+            createdAt: call.createdAt,
+            recordedAt: call.recordedAt
+          };
+
+          analyses.push(analysisFromCall);
+        }
+      }
+
+      // Also try to get analyses from the separate subcollection
+      const separateAnalyses = await this.getUserAnalyses();
+
+      // Merge both arrays, avoiding duplicates
+      for (const analysis of separateAnalyses) {
+        if (!analyses.find(a => a.callId === analysis.callId)) {
+          analyses.push(analysis);
+        }
+      }
 
       console.log('✅ Firestore data fetch complete:', {
         calls: calls.length,
-        analyses: analyses.length
+        analyses: analyses.length,
+        analysesFromCalls: calls.filter(c => c.analysis).length,
+        analysesFromSubcollection: separateAnalyses.length
       });
 
       return { calls, analyses };
@@ -271,6 +336,16 @@ export class FirestoreService {
       console.error('❌ Error fetching Firestore data:', error);
       return { calls: [], analyses: [] };
     }
+  }
+
+  /**
+   * Helper function to determine risk level from score
+   */
+  private getRiskLevel(score: number): string {
+    if (score < 30) return '정상';
+    if (score < 50) return '보통';
+    if (score < 70) return '주의';
+    return '위험';
   }
 
   /**
