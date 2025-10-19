@@ -838,15 +838,10 @@ GitHub 저장소와 Vercel 프로젝트를 연결하면, 코드를 `push`할 때
 >
 > **Root Directory 설정 방법:**
 > 1. Vercel Dashboard → 프로젝트 선택
-> 2. Settings → General → Root Directory
+> 2. Settings → Build and Deployment → Root Directory
 > 3. 입력: `frontend/web` (정확히 입력, 슬래시 사용)
 > 4. Save 버튼 클릭!
 
-**Vercel CLI로 GitHub 연결**
-```bash
-# frontend/web 디렉토리에서 실행
-vercel --prod --confirm
-vercel git connect
 ```
 
 #### 6.2 자동 배포 테스트 (자동화) ✅ 완료
@@ -864,15 +859,6 @@ git push
 3.  Vercel 대시보드의 `Deployments` 탭에서 새로운 빌드가 자동으로 시작되는지 확인합니다.
 
 ---
-
-### Step 7: 커스텀 도메인 설정 (선택 사항, 수동)
-
-**설명:**
-`*.vercel.app` 주소 대신 개인 도메인(예: `my-mhealth.com`)을 연결합니다.
-
-1.  Vercel Dashboard > 프로젝트 선택 > `Settings` 탭 > `Domains` 메뉴로 이동합니다.
-2.  소유한 도메인을 추가하고, 화면에 표시되는 안내에 따라 DNS 레코드(A 또는 CNAME)를 설정합니다.
-3.  DNS 설정이 완료되면 Vercel이 자동으로 SSL 인증서를 발급합니다.
 
 ---
 
