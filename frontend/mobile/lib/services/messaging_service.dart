@@ -413,8 +413,9 @@ class MessagingService {
       _logger.info('Firebase ID 토큰 획득 완료');
 
       // 백엔드 API 엔드포인트 (Cloud Run) - 통일된 경로
-      const apiUrl =
-          'https://senior-mhealth-api-1054806937473.asia-northeast3.run.app/api/v1/users/fcm-token';
+      final apiUrl = dotenv.env['API_BASE_URL'] != null 
+          ? '${dotenv.env['API_BASE_URL']}/api/v1/users/fcm-token'
+          : 'https://your-api-service.run.app/api/v1/users/fcm-token';
 
       _logger.info('API 호출 시작: $apiUrl');
       if (kDebugMode) {

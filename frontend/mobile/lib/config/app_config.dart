@@ -49,8 +49,8 @@ class ProjectInfo {
 
   factory ProjectInfo.fromJson(Map<String, dynamic> json) {
     return ProjectInfo(
-      id: json['id'] ?? 'senior-mhealth-472007',
-      name: json['name'] ?? 'Senior MHealth',
+      id: json['id'] ?? 'your-project-id',
+      name: json['name'] ?? 'Your Project Name',
       region: json['region'] ?? 'asia-northeast3',
       location: json['location'] ?? 'asia-northeast3',
     );
@@ -74,9 +74,9 @@ class FirebaseInfo {
 
   factory FirebaseInfo.fromJson(Map<String, dynamic> json) {
     return FirebaseInfo(
-      projectId: json['projectId'] ?? 'senior-mhealth-472007',
-      storageBucket: json['storageBucket'] ?? 'senior-mhealth-472007.firebasestorage.app',
-      messagingSenderId: json['messagingSenderId'] ?? '1054806937473',
+      projectId: json['projectId'] ?? 'your-project-id',
+      storageBucket: json['storageBucket'] ?? 'your-project-id.firebasestorage.app',
+      messagingSenderId: json['messagingSenderId'] ?? 'your-messaging-sender-id',
       appId: json['appId'],
       apiKey: json['apiKey'],
     );
@@ -148,8 +148,8 @@ class AppConfig {
     project: ProjectInfo(
       id: 'your-project-id',
       name: 'Your Project Name',
-      region: 'us-central1',
-      location: 'us-central1',
+      region: 'asia-northeast3',
+      location: 'asia-northeast3',
     ),
     firebase: FirebaseInfo(
       projectId: 'your-project-id',
@@ -317,7 +317,7 @@ class AppConfig {
 
   static Future<String> getWebAppUrl() async {
     final config = await getConfig();
-    return config.services.webApp?.url ?? 'https://senior-mhealth.vercel.app';
+    return config.services.webApp?.url ?? 'https://your-app.vercel.app';
   }
 
   /**

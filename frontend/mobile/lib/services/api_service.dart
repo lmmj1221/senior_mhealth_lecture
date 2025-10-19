@@ -21,7 +21,7 @@ class ApiService {
   // Backend API 엔드포인트 (Cloud Run)
   String get _functionsBaseUrl {
     final url = dotenv.env['API_BASE_URL'] ??
-        'https://senior-mhealth-api-1054806937473.asia-northeast3.run.app';
+        'https://your-api-service.run.app';
     LogService.info('ApiService', '🌐 API URL: $url');
     return url;
   }

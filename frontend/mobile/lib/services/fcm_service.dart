@@ -147,8 +147,12 @@ class FCMService {
         return;
       }
 
+      final apiUrl = dotenv.env['API_BASE_URL'] != null 
+          ? '${dotenv.env['API_BASE_URL']}/registerFCMToken'
+          : 'https://your-project-id.cloudfunctions.net/registerFCMToken';
+      
       final response = await http.post(
-        Uri.parse('https://asia-northeast3-senior-mhealth-472007.cloudfunctions.net/registerFCMToken'),
+        Uri.parse(apiUrl),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'userId': user.uid,
