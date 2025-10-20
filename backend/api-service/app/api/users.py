@@ -27,7 +27,7 @@ try:
         if os.path.exists(service_account_path):
             cred = credentials.Certificate(service_account_path)
             firebase_admin.initialize_app(cred, {
-                'storageBucket': 'senior-mhealth-472007.appspot.com'
+                'storageBucket': 'credible-runner-474101-f6.appspot.com'
             })
             logger.info("Firebase Admin SDK initialized with service account")
         else:

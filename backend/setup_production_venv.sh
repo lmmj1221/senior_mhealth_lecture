@@ -73,7 +73,7 @@ if [ ! -f ".env" ]; then
     echo "📝 Creating .env file..."
     cat > .env << 'EOF'
 # Environment Configuration
-GOOGLE_CLOUD_PROJECT=senior-mhealth-472007
+GOOGLE_CLOUD_PROJECT=credible-runner-474101-f6
 OPENAI_API_KEY=your_openai_api_key_here
 GEMINI_API_KEY=your_gemini_api_key_here
 USE_RAG=false

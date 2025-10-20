@@ -77,13 +77,13 @@ class SeniorMentalHealthPipeline:
             try:
                 # RAG 벡터 스토어 초기화
                 self.vector_store = FirebaseStorageVectorStore(
-                    project_id=self.config.get('project_id', 'senior-mhealth-472007')
+                    project_id=self.config.get('project_id', 'credible-runner-474101-f6')
                 )
                 # RAG 강화 텍스트 분석기
                 self.text_analyzer = RAGEnhancedTextAnalyzer(
                     use_rag=True,
                     vector_store_config={
-                        'project_id': self.config.get('project_id', 'senior-mhealth-472007')
+                        'project_id': self.config.get('project_id', 'credible-runner-474101-f6')
                     }
                 )
                 logger.info("RAG 강화 텍스트 분석기 초기화 성공")
@@ -118,7 +118,7 @@ class SeniorMentalHealthPipeline:
             if os.getenv('K_SERVICE'):  # Cloud Run 환경 체크
                 self.stt_connector = GoogleCloudSpeechConnector(
                     credentials_path=None,  # 기본 인증 사용
-                    project_id='senior-mhealth-472007'
+                    project_id='credible-runner-474101-f6'
                 )
                 logger.info("Google Cloud STT 초기화 성공 (Cloud Run 기본 인증)")
             else:
@@ -139,7 +139,7 @@ class SeniorMentalHealthPipeline:
                 if credentials_path and credentials_path.exists():
                     self.stt_connector = GoogleCloudSpeechConnector(
                         credentials_path=str(credentials_path),
-                        project_id='senior-mhealth-472007'
+                        project_id='credible-runner-474101-f6'
                     )
                     logger.info(f"Google Cloud STT 초기화 성공: {credentials_path}")
                 else:

@@ -54,7 +54,7 @@ class GoogleCloudSpeechConnector:
             credentials_path: 서비스 계정 키 파일 경로
             project_id: GCP 프로젝트 ID
         """
-        self.project_id = project_id or os.getenv('GCP_PROJECT_ID', 'senior-mhealth-472007')
+        self.project_id = project_id or os.getenv('GCP_PROJECT_ID', 'credible-runner-474101-f6')
 
         # 인증 설정
         if credentials_path and Path(credentials_path).exists():
@@ -72,7 +72,7 @@ class GoogleCloudSpeechConnector:
         self.storage_connector = FirebaseStorageConnector(credentials_path)
 
         # Google Cloud Storage 버킷 설정
-        self.bucket_name = os.getenv('GCS_BUCKET_NAME', 'senior-mhealth-472007.firebasestorage.app')
+        self.bucket_name = os.getenv('GCS_BUCKET_NAME', 'credible-runner-474101-f6.firebasestorage.app')
 
         # Long Running 작업 상태 캐시
         self.operation_cache = {}

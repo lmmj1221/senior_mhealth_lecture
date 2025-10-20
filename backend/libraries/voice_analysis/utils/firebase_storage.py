@@ -53,7 +53,7 @@ class FirebaseStorageClient:
                 logger.info("Firebase Storage 클라이언트 초기화 성공 (기본 자격 증명 사용)")
             
             # 버킷 설정
-            bucket_name = os.environ.get('FIREBASE_STORAGE_BUCKET', 'senior-mhealth-472007.firebasestorage.app')
+            bucket_name = os.environ.get('FIREBASE_STORAGE_BUCKET', 'credible-runner-474101-f6.firebasestorage.app')
             self.bucket = self.client.bucket(bucket_name)
             logger.info(f"Firebase Storage 버킷 설정: {bucket_name}")
             

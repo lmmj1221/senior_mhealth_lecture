@@ -107,7 +107,7 @@
               {
                 "timeSeriesQuery": {
                   "timeSeriesFilter": {
-                    "filter": "resource.type=\"cloudsql_database\" AND resource.labels.database_id=\"senior-mhealth-472007:asia-northeast3:senior-mhealth-postgres\" AND metric.type=\"cloudsql.googleapis.com/database/postgresql/num_backends\"",
+                    "filter": "resource.type=\"cloudsql_database\" AND resource.labels.database_id=\"credible-runner-474101-f6:asia-northeast3:senior-mhealth-postgres\" AND metric.type=\"cloudsql.googleapis.com/database/postgresql/num_backends\"",
                     "aggregation": {
                       "alignmentPeriod": "60s",
                       "perSeriesAligner": "ALIGN_MEAN"

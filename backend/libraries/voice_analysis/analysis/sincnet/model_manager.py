@@ -26,7 +26,7 @@ class SincNetModelManager:
         }
 
         # Firebase Storage 설정
-        self.bucket_name = 'senior-mhealth-472007.firebasestorage.app'
+        self.bucket_name = 'credible-runner-474101-f6.firebasestorage.app'
         self.storage_prefix = 'models/sincnet/'
 
         # 로컬 캐시 디렉토리 설정

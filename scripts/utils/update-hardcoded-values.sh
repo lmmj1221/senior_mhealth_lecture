@@ -66,7 +66,7 @@ API_SERVICE_URL=$(get_config_value '.services.apiService.url')
 WEB_APP_URL=$(get_config_value '.services.webApp.url')
 
 # 기본값 설정 (설정 파일에서 로드되지 않은 경우)
-PROJECT_ID=${PROJECT_ID:-"senior-mhealth-472007"}
+PROJECT_ID=${PROJECT_ID:-"credible-runner-474101-f6"}
 PROJECT_REGION=${PROJECT_REGION:-"asia-northeast3"}
 FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-"$PROJECT_ID"}
 FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET:-"$PROJECT_ID.firebasestorage.app"}
@@ -106,7 +106,7 @@ replace_hardcoded_values() {
     local target_dir="$1"
     log_info "하드코딩된 값 치환 중: $target_dir"
 
-    # 기본 프로젝트 ID 치환 (senior-mhealth-472007)
+    # 기본 프로젝트 ID 치환 (credible-runner-474101-f6)
     find "$target_dir" -type f \( \
         -name "*.js" -o -name "*.ts" -o -name "*.jsx" -o -name "*.tsx" \
         -o -name "*.py" -o -name "*.dart" -o -name "*.yaml" -o -name "*.yml" \
@@ -116,14 +116,14 @@ replace_hardcoded_values() {
         -not -path "*/.git/*" \
         -not -path "*/lib/*" \
         -not -path "*/.dart_tool/*" \
-        -exec grep -l "senior-mhealth-472007" {} \; 2>/dev/null | while read -r file; do
+        -exec grep -l "credible-runner-474101-f6" {} \; 2>/dev/null | while read -r file; do
 
         # project.config.json 파일은 제외 (템플릿 파일)
         if [[ "$file" == *"project.config.json" ]]; then
             continue
         fi
 
-        replace_in_file "$file" "senior-mhealth-472007" "$PROJECT_ID" "프로젝트 ID 치환"
+        replace_in_file "$file" "credible-runner-474101-f6" "$PROJECT_ID" "프로젝트 ID 치환"
     done
 
     # Firebase Storage Bucket 치환
@@ -136,13 +136,13 @@ replace_hardcoded_values() {
         -not -path "*/.git/*" \
         -not -path "*/lib/*" \
         -not -path "*/.dart_tool/*" \
-        -exec grep -l "senior-mhealth-472007\.firebasestorage\.app" {} \; 2>/dev/null | while read -r file; do
+        -exec grep -l "credible-runner-474101-f6\.firebasestorage\.app" {} \; 2>/dev/null | while read -r file; do
 
         if [[ "$file" == *"project.config.json" ]]; then
             continue
         fi
 
-        replace_in_file "$file" "senior-mhealth-472007.firebasestorage.app" "$FIREBASE_STORAGE_BUCKET" "Storage Bucket 치환"
+        replace_in_file "$file" "credible-runner-474101-f6.firebasestorage.app" "$FIREBASE_STORAGE_BUCKET" "Storage Bucket 치환"
     done
 
     # Cloud Run 서비스 URL 치환 (API 서비스)
@@ -237,8 +237,8 @@ main() {
     # 루트 레벨 파일들 처리
     for file in "$PROJECT_ROOT"/*.md "$PROJECT_ROOT"/*.yml "$PROJECT_ROOT"/*.yaml "$PROJECT_ROOT"/*.json; do
         if [ -f "$file" ] && [[ "$(basename "$file")" != "project.config.json" ]]; then
-            if grep -q "senior-mhealth-472007" "$file" 2>/dev/null; then
-                replace_in_file "$file" "senior-mhealth-472007" "$PROJECT_ID" "프로젝트 ID 치환"
+            if grep -q "credible-runner-474101-f6" "$file" 2>/dev/null; then
+                replace_in_file "$file" "credible-runner-474101-f6" "$PROJECT_ID" "프로젝트 ID 치환"
             fi
         fi
     done

@@ -21,9 +21,9 @@ echo -e "\n${YELLOW}📝 Setting environment variables...${NC}"
 
 # Firebase configuration
 echo "AIzaSyBpaQk82XnXkdZyzrtbgfUSMA70B2s1meA" | vercel env add NEXT_PUBLIC_FIREBASE_API_KEY production --force
-echo "senior-mhealth-472007.firebaseapp.com" | vercel env add NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN production --force
-echo "senior-mhealth-472007" | vercel env add NEXT_PUBLIC_FIREBASE_PROJECT_ID production --force
-echo "senior-mhealth-472007.firebasestorage.app" | vercel env add NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET production --force
+echo "credible-runner-474101-f6.firebaseapp.com" | vercel env add NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN production --force
+echo "credible-runner-474101-f6" | vercel env add NEXT_PUBLIC_FIREBASE_PROJECT_ID production --force
+echo "credible-runner-474101-f6.firebasestorage.app" | vercel env add NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET production --force
 echo "1054806937473" | vercel env add NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID production --force
 echo "1:1054806937473:web:f0a71476f665350937a280" | vercel env add NEXT_PUBLIC_FIREBASE_APP_ID production --force
 
@@ -36,7 +36,7 @@ echo "https://senior-mhealth.vercel.app" | vercel env add NEXT_PUBLIC_APP_URL pr
 
 # FCM configuration
 echo "BK4hJ8m7P5rL2Qn6Tv9XzA3BcD1eFgH4IjK2lM8N0oP7qRs5TuVwXyZ9" | vercel env add NEXT_PUBLIC_FCM_VAPID_KEY production --force
-echo "https://asia-northeast3-senior-mhealth-472007.cloudfunctions.net/registerFCMToken" | vercel env add NEXT_PUBLIC_FCM_TOKEN_API production --force
+echo "https://asia-northeast3-credible-runner-474101-f6.cloudfunctions.net/registerFCMToken" | vercel env add NEXT_PUBLIC_FCM_TOKEN_API production --force
 
 # Feature flags
 echo "false" | vercel env add NEXT_PUBLIC_USE_MOCK_DATA production --force

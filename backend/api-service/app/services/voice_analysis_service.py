@@ -51,7 +51,7 @@ class VoiceAnalysisService:
             try:
                 self.storage_client = storage.Client(project=settings.google_cloud_project)
                 self.firestore_client = firestore.Client(project=settings.google_cloud_project)
-                self.bucket_name = settings.storage_bucket_name or "senior-mhealth-472007.firebasestorage.app"
+                self.bucket_name = settings.storage_bucket_name or "credible-runner-474101-f6.firebasestorage.app"
                 logger.info("Voice analysis service initialized with Google Cloud")
             except Exception as e:
                 logger.warning(f"Google Cloud init failed, using mock mode: {e}")

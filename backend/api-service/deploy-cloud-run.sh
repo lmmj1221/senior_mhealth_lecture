@@ -19,13 +19,13 @@ if [ -f "$CONFIG_FILE" ]; then
     SERVICE_NAME=$($PYTHON_CMD -c "import json; print(json.load(open('$CONFIG_FILE'))['services']['apiService']['name'], end='')" 2>/dev/null | tr -d '\n\r')
 
     # Fallback if any value is empty
-    [ -z "$PROJECT_ID" ] && PROJECT_ID="senior-mhealth-472007"
+    [ -z "$PROJECT_ID" ] && PROJECT_ID="credible-runner-474101-f6"
     [ -z "$REGION" ] && REGION="asia-northeast3"
     [ -z "$SERVICE_NAME" ] && SERVICE_NAME="senior-mhealth-api"
     echo "✅ Configuration loaded - Project: ${PROJECT_ID}, Region: ${REGION}"
 else
     echo "⚠️ Config file not found, using defaults"
-    PROJECT_ID="senior-mhealth-472007"
+    PROJECT_ID="credible-runner-474101-f6"
     REGION="asia-northeast3"
     SERVICE_NAME="senior-mhealth-api"
 fi

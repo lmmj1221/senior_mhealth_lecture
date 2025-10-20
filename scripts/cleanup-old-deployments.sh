@@ -13,7 +13,7 @@ NC='\033[0m'
 echo -e "${GREEN}🧹 Starting cleanup of old deployment artifacts${NC}"
 
 # Configuration
-PROJECT_ID="senior-mhealth-472007"
+PROJECT_ID="credible-runner-474101-f6"
 REGION="asia-northeast3"
 KEEP_REVISIONS=3  # Number of revisions to keep for each service
 

@@ -43,8 +43,8 @@ jobs:
           echo "Checking for hardcoded project IDs..."
 
           # Check for specific hardcoded project ID (should be replaced with placeholders)
-          if grep -r "senior-mhealth-472007" --exclude-dir=node_modules --exclude-dir=.git --exclude="*.md" .; then
-            echo "❌ Found hardcoded project ID 'senior-mhealth-472007'"
+          if grep -r "credible-runner-474101-f6" --exclude-dir=node_modules --exclude-dir=.git --exclude="*.md" .; then
+            echo "❌ Found hardcoded project ID 'credible-runner-474101-f6'"
             echo "These should be replaced with placeholders or environment variables"
             exit 1
           else

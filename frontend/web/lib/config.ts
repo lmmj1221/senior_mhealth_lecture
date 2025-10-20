@@ -72,9 +72,9 @@ class ConfigManager {
 
       firebase: {
         apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyBpaQk82XnXkdZyzrtbgfUSMA70B2s1meA',
-        authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'senior-mhealth-472007.firebaseapp.com',
-        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'senior-mhealth-472007',
-        storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'senior-mhealth-472007.firebasestorage.app',
+        authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'credible-runner-474101-f6.firebaseapp.com',
+        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'credible-runner-474101-f6',
+        storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'credible-runner-474101-f6.firebasestorage.app',
         messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '1054806937473',
         appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '1:1054806937473:web:f0a71476f665350937a280',
         measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID

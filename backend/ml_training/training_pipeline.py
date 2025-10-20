@@ -35,7 +35,7 @@ class MultimodalMentalHealthTrainer:
     멀티모달 정신건강 분석 모델 학습
     """
 
-    def __init__(self, project_id: str = "senior-mhealth-472007"):
+    def __init__(self, project_id: str = "credible-runner-474101-f6"):
         self.project_id = project_id
         self.bigquery_client = bigquery.Client(project=project_id)
 

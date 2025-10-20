@@ -25,8 +25,8 @@ try:
             # 기본 자격 증명 사용 (Google Cloud 환경에서는 자동으로 감지)
             # Storage bucket 명시적 지정
             firebase_admin.initialize_app(options={
-                'storageBucket': 'senior-mhealth-472007.appspot.com',
-                'projectId': 'senior-mhealth-472007'
+                'storageBucket': 'credible-runner-474101-f6.appspot.com',
+                'projectId': 'credible-runner-474101-f6'
             })
             logger.info("Firebase Admin SDK 초기화 성공")
             FIREBASE_ENABLED = True

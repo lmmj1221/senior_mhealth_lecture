@@ -44,7 +44,7 @@ else
     exit 1
 fi
 
-OLD_PROJECT_ID="senior-mhealth-472007"
+OLD_PROJECT_ID="credible-runner-474101-f6"
 NEW_PROJECT_ID="${GCP_PROJECT_ID}"
 
 if [ -z "$NEW_PROJECT_ID" ]; then

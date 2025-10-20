@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     # Cloud Storage settings
     gcs_bucket: str = os.getenv("GCS_BUCKET", "senior-mhealth-models")
     model_path: str = os.getenv("MODEL_PATH", "models/sincnet/model.pt")
-    audio_bucket: str = os.getenv("AUDIO_BUCKET", "senior-mhealth-472007.firebasestorage.app")
+    audio_bucket: str = os.getenv("AUDIO_BUCKET", "credible-runner-474101-f6.firebasestorage.app")
     
     # Server settings
     host: str = "0.0.0.0"
