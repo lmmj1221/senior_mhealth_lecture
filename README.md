@@ -74,6 +74,17 @@ firebase use --add
 ```
 
 #### 3️⃣ 의존성 설치 및 실행
+
+**크로스플랫폼 자동 설정 (권장):**
+```bash
+# 크로스플랫폼 설정 도구 실행 (Mac, Windows, Linux 호환)
+npm run setup
+
+# 또는 직접 실행
+node scripts/setup-cross-platform.js
+```
+
+**수동 설치:**
 ```bash
 # 백엔드
 cd backend/functions
@@ -83,6 +94,40 @@ npm install
 cd ../../frontend/web
 npm install
 npm run dev
+```
+
+## 🖥️ 크로스플랫폼 개발 환경
+
+Docker 외에 다음과 같은 크로스플랫폼 솔루션들을 제공합니다:
+
+### VS Code Dev Containers (권장)
+```bash
+# .devcontainer 폴더가 이미 구성됨
+# VS Code에서 "Dev Containers: Reopen in Container" 실행
+```
+
+### GitHub Codespaces
+- 브라우저에서 완전한 개발 환경
+- 추가 설정 불필요
+- [GitHub Codespaces](https://github.com/features/codespaces)에서 프로젝트 열기
+
+### WSL 2 + Windows Terminal (Windows 권장)
+```bash
+# Windows에서 Linux 환경 사용
+wsl --install
+# Git Bash에서 기존 bash 스크립트 그대로 사용 가능
+```
+
+### 환경 검증 및 설치
+```bash
+# 환경 검증
+npm run validate
+
+# 개발 환경 테스트
+node scripts/setup-cross-platform.js test
+
+# 프로젝트 정리
+node scripts/setup-cross-platform.js cleanup
 ```
 
 ### 📝 필수 환경 변수
