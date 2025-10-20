@@ -1141,7 +1141,7 @@ exports.processVoiceFile = functions.storage
 ```python
 # backend/ai-service/app/main.py (AI 분석 서비스)
 from app.services.speech_to_text import transcribe_audio
-from app.services.vertex_ai_analyzer import analyze_conversation
+from app.services.google_ai_analyzer import analyze_conversation
 
 @app.post("/analyze")
 async def analyze_voice(request: AnalysisRequest):
@@ -1151,7 +1151,7 @@ async def analyze_voice(request: AnalysisRequest):
     # 2️⃣ 음성 → 텍스트 변환 (STT: Speech-to-Text)
     transcript = await transcribe_audio(audio_file)
 
-    # 3️⃣ Vertex AI로 대화 분석
+    # 3️⃣ Google AI Studio API로 대화 분석
     analysis_result = await analyze_conversation(transcript, senior_id)
 
     # 4️⃣ 분석 결과를 Firestore에 저장

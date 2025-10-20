@@ -1068,7 +1068,7 @@ gcloud run services update-traffic ${AI_SERVICE_NAME} \
 │  역할:                                               │
 │  • 음성 → 텍스트 변환 (Speech-to-Text)               │
 │  • 감정 분석 및 정신건강 평가                         │
-│  • Vertex AI (Gemini) 직접 연동                      │
+│  • Google AI Studio API (Gemini) 직접 연동          │
 │  • AI 모델 추론 및 분석                              │
 └──────────────────────────────────────────────────────┘
 ```
@@ -1100,7 +1100,7 @@ gcloud run services update-traffic ${AI_SERVICE_NAME} \
    ↓
 3. 🔄 POST /analyze-audio (AI Service 호출)
    - 음성을 텍스트로 변환
-   - Vertex AI로 감정 분석
+   - Google AI Studio API로 감정 분석
    - 정신건강 점수 계산
    ↓
 4. 💾 Firestore 저장 (API Service)

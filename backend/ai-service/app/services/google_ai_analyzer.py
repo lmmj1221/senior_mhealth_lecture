@@ -56,15 +56,15 @@ class GoogleAIAnalyzer:
         genai.configure(api_key=api_key)
 
         # Gemini 모델 초기화
-        # Gemini 2.0 이상 사용
+        # Gemini 2.0 Flash Experimental 사용 (최신 모델)
         model_name = os.getenv('MODEL_NAME', 'gemini-2.0-flash-exp')
 
-        # 사용 가능한 모델 목록 (Gemini 2.0 이상)
+        # 사용 가능한 모델 목록 (Gemini 2.0 우선)
         valid_models = [
-            'gemini-2.0-flash-exp',  # Gemini 2.0 Flash Experimental
-            'gemini-exp-1206',       # Experimental model
-            'gemini-1.5-pro',        # Fallback to 1.5 Pro if 2.0 unavailable
-            'gemini-1.5-flash'       # Final fallback
+            'gemini-2.0-flash-exp',  # Gemini 2.0 Flash Experimental (1순위)
+            'gemini-1.5-pro',        # Fallback to 1.5 Pro (2순위)
+            'gemini-1.5-flash',      # Final fallback (3순위)
+            'gemini-exp-1206'        # Experimental model (4순위)
         ]
 
         # 환경변수로 지정된 모델이 유효한지 확인

@@ -1,6 +1,7 @@
 """
-Vertex AI Gemini API 기반 텍스트 분석 서비스
+Vertex AI Gemini API 기반 텍스트 분석 서비스 (DEPRECATED)
 GCP 내부에서 제공하는 Vertex AI의 Gemini 모델 사용
+⚠️ 이 파일은 Google AI Studio API 통일로 인해 사용되지 않습니다.
 """
 
 import os

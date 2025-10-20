@@ -1,9 +1,9 @@
 # Senior MHealth AI Service - Dependencies
-# Text analysis using Gemini API + Speech-to-Text
+# Text analysis using Google AI Studio Gemini API + Speech-to-Text
 
 # Core dependencies
-google-cloud-aiplatform>=1.38.0  # Vertex AI SDK for Gemini API
-google-generativeai>=0.3.0  # Google AI SDK for Gemini API
+google-generativeai>=0.3.0  # Google AI Studio SDK for Gemini API (통일)
+# google-cloud-aiplatform>=1.38.0  # Vertex AI SDK (사용 안함)
 fastapi>=0.104.0
 uvicorn[standard]>=0.24.0  # includes uvloop for performance
 pydantic>=2.0.0
