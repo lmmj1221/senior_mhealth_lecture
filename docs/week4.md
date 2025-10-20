@@ -78,9 +78,9 @@ Docker 컨테이너 기술을 이해하고 Google Cloud Run을 사용하여 AI S
 
 **💡 도시락 비유로 이해하기:**
   - Dockerfile: 도시락 만드는 레시피 (설계도)
-  - Docker Image: 포장된 도시락 세트 (실행 준비 완료      
+  - Docker Image: 포장된 도시락 세트 (실행 준비 완료
   상태)
-  - Docker Container: 실제로 펼쳐놓고 사용 중인 도시락    
+  - Docker Container: 실제로 펼쳐놓고 사용 중인 도시락
    (실행 중인 인스턴스)
   - Registry: 도시락 보관 창고 (이미지 저장소)
 
@@ -342,7 +342,7 @@ Google Cloud에서 Cloud Run과 Docker를 위한 환경을 설정해주세요.
    AIzaSyBxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
    ```
 
-> 💡 **주의사항**: 
+> 💡 **주의사항**:
 > - API 키는 외부에 노출되지 않도록 주의
 > - 반드시 기존 GCP 프로젝트와 연결하여 생성
 > - API 키는 한 번만 표시되므로 즉시 복사하여 저장
@@ -467,7 +467,7 @@ AI Service를 위한 Dockerfile을 생성해주세요.
 
 > ⚠️ **중요**: AI Service는 Docker를 사용하여 로컬에서 빌드하고 Registry에 푸시합니다.
 
-#### Artifact Registry 사용 
+#### Artifact Registry 사용
 
 ```bash
 # Artifact Registry 저장소 생성 (처음 한 번만)
@@ -1261,7 +1261,7 @@ gcloud run deploy ${AI_SERVICE_NAME} \
    - **"Secret Manager API not enabled"**: `gcloud services enable secretmanager.googleapis.com`
    - **"Invalid API key format"**: API 키 길이가 39자가 아니거나 줄바꿈 포함
    - **"Permission denied"**: 서비스 계정에 Secret Manager 권한 부족
-   
+
    ```bash
    # Secret Manager 권한 추가
    gcloud projects add-iam-policy-binding ${PROJECT_ID} \
@@ -1275,7 +1275,7 @@ gcloud run deploy ${AI_SERVICE_NAME} \
    echo "AIzaSyBxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
    " | wc -c
    # 출력: 40 (줄바꿈 포함으로 1자 초과)
-   
+
    # 해결: echo -n 사용
    echo -n "AIzaSyBxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" | wc -c
    # 출력: 39 (정확한 길이)
@@ -1304,7 +1304,7 @@ curl -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5
 | **Cloud Run** | 환경변수 | 중간 | 터미널 히스토리 주의 |
 | **프로덕션** | Secret Manager | 높음 | **줄바꿈 금지**, 길이 확인 필수 |
 
-> 💡 **팁**: 
+> 💡 **팁**:
 > - 개발 단계: 환경변수 방식 사용
 > - 프로덕션: **반드시 Secret Manager 사용**
 > - Secret Manager 사용 시: `echo -n` 명령어로 줄바꿈 방지

@@ -135,7 +135,7 @@ Firestore 데이터베이스를 활용하여 Senior MHealth의 핵심 기능인 
 ### 4-3. AI 건강 분석 통합 🤖
 
 > 🤖 **AI에게 요청**:
-> "Vertex AI를 활용한 건강 분석 기능을 추가해줘.
+> "Google AI Studio API를 활용한 건강 분석 기능을 추가해줘.
 > - POST /health/analyze - AI 건강 분석
 > - 최근 7일 데이터 자동 수집
 > - Gemini 모델로 패턴 분석

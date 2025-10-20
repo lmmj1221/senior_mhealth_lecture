@@ -1,7 +1,7 @@
 # Week 4: Cloud Functions & AI 서비스 - 실습편
 
 ## 🎯 실습 목표
-Express.js와 Cloud Functions를 사용하여 Senior MHealth의 첫 번째 API 엔드포인트를 구현하고, Vertex AI를 통합합니다.
+Express.js와 Cloud Functions를 사용하여 Senior MHealth의 첫 번째 API 엔드포인트를 구현하고, Google AI Studio API를 통합합니다.
 
 ## 🔍 작업 구분
 - **👤 사용자 직접 작업**: GCP Console에서 수동으로 진행
@@ -19,11 +19,11 @@ Express.js와 Cloud Functions를 사용하여 Senior MHealth의 첫 번째 API �
 > - 프로젝트가 올바르게 설정되어 있는지 검증
 > - 문제가 있으면 자동으로 수정"
 
-### 1-2. Vertex AI 및 관련 API 활성화 🤖
+### 1-2. Google AI Studio API 및 관련 API 활성화 🤖
 
 > 🤖 **AI에게 요청**:
 > "AI 서비스를 위한 필수 API들을 자동으로 활성화해줘.
-> - Vertex AI API (aiplatform.googleapis.com)
+> - Google AI Studio API (generativeai.googleapis.com)
 > - Cloud Functions API
 > - Cloud Build API
 > - Artifact Registry API
@@ -59,7 +59,7 @@ Express.js와 Cloud Functions를 사용하여 Senior MHealth의 첫 번째 API �
 > "backend/functions 디렉토리에 필요한 모든 패키지를 자동으로 설치해줘.
 > - Express.js와 미들웨어: express, cors, helmet, express-rate-limit
 > - Firebase Admin SDK
-> - Vertex AI SDK (@google-cloud/aiplatform)
+> - Google AI SDK (@google/generativeai)
 > - 개발 도구: nodemon, @types/node
 > - 설치 진행 상황 실시간으로 보여줘"
 
@@ -76,7 +76,7 @@ NODE_ENV=development
 FIREBASE_PROJECT_ID=senior-mhealth-학번
 FIREBASE_PROJECT_LOCATION=asia-northeast3
 
-# Vertex AI Settings
+# Google AI Studio API Settings
 GCP_PROJECT_ID=senior-mhealth-학번
 GCP_LOCATION=asia-northeast3
 
@@ -90,22 +90,22 @@ RATE_LIMIT_MAX_REQUESTS=100
 
 ---
 
-## Step 3: Vertex AI 설정 및 테스트
+## Step 3: Google AI Studio API 설정 및 테스트
 
 ### 3-1. 인증 설정 🤖
 
 > 🤖 **AI에게 요청**:
-> "Vertex AI 사용을 위한 인증을 자동으로 설정해줘.
+> "Google AI Studio API 사용을 위한 인증을 자동으로 설정해줘.
 > - Application Default Credentials 자동 설정
 > - 서비스 계정 권한 확인 및 부여
-> - Vertex AI API 접근 권한 검증
+> - Google AI Studio API 접근 권한 검증
 > - 인증 상태 확인 후 결과 보여줘"
 
-### 3-2. Vertex AI 연결 테스트 🤖
+### 3-2. Google AI Studio API 연결 테스트 🤖
 
 > 🤖 **AI에게 요청**:
-> "Vertex AI Gemini 모델 연결을 테스트하고 결과를 보여줘.
-> - test-vertex-ai.js 파일 자동 생성
+> "Google AI Studio API Gemini 모델 연결을 테스트하고 결과를 보여줘.
+> - test-google-ai.js 파일 자동 생성
 > - Gemini 1.5 Flash 모델로 연결 테스트
 > - 간단한 한국어 프롬프트로 응답 확인
 > - 성공/실패 상태 명확하게 표시

@@ -462,7 +462,7 @@ FIREBASE_PROJECT_ID=senior-mhealth-학번
 >
 
 ### 5-7. Firebase 프로젝트 전체 초기화 🤖
-영상에서는 진행하고 있으나 여러분들은 하지 않습니다. 
+영상에서는 진행하고 있으나 여러분들은 하지 않습니다.
 
 
 ## Step 6: 프로젝트 의존성 설치
@@ -572,7 +572,7 @@ Senior_MHealth/
 
 ### 📚 다음 단계
 
-- **Week 4**: AI 서비스 통합 (Vertex AI, Gemini API)
+- **Week 4**: AI 서비스 통합 (Google AI Studio API, Gemini API)
 - **Week 5**: 백엔드 개발 (Cloud Functions, API 구현)
 - **Week 6**: 웹 애플리케이션 배포 (Vercel)
 - **Week 7**: 모바일 앱 개발 (Flutter)

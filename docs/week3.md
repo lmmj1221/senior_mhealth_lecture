@@ -34,12 +34,12 @@ Compute
 Storage & Database
 ├── Cloud Storage
 ├── Firebase Firestore (NoSQL)
---- Firebase storage 
+--- Firebase storage
 ├── Cloud SQL (관계형 DB)
 └── BigQuery (데이터 웨어하우스)
 
 AI & ML
-├── Vertex AI (통합 ML 플랫폼)
+├── Google AI Studio API (통합 ML 플랫폼)
 ├── Vision API
 ├── Natural Language API
 └── Translation API
@@ -301,16 +301,16 @@ const posts = await db.collectionGroup('posts')
     - 이벤트 기반 아키텍처 이해
     - 최신 클라우드 개발 트렌드
 3. **개발 편의성**
-    
+
     ```jsx
     // Firebase Functions - 간단한 구조
     const { onRequest } = require('firebase-functions/v2/https');
     exports.api = onRequest((req, res) => {
       res.send('API Response');
     });
-    
+
     ```
-    
+
 4. **비용 효율성**
     - 학생 프로젝트에 충분한 무료 할당량
     - 월 200만 호출, 400,000 GB-초 무료
@@ -349,7 +349,7 @@ gcloud run deploy ai-service \\
 - **백엔드**: Cloud Functions (서버리스)
 - **데이터베이스**: Firestore (NoSQL)
 - **인증**: Firebase Authentication
-- **AI/ML**: Vertex AI (Gemini API)
+- **AI/ML**: Google AI Studio API (Gemini API)
 - **스토리지**: Cloud Storage
 - **호스팅**: Firebase Hosting / Vercel
 
@@ -372,7 +372,7 @@ Google Cloud Platform 계정을 생성하고, Firebase 프로젝트를 설정하
 
 > 🤖 AI에게 요청:
 "Node.js가 설치되어 있는지 확인하고, 없으면 바로 설치해줘. Firebase CLI와 Google Cloud SDK도 설치가 필요하면 자동으로 설치해줘. 내 OS는 [Windows/Mac]야."
-> 
+>
 
 **Windows 설치 코드 (관리자 권한 CMD에서 실행)**:
 
@@ -442,12 +442,12 @@ gcloud config set project YOUR_PROJECT_ID
 **목표**: 개인 학습용 GCP 프로젝트를 생성합니다.
 
 1. **프로젝트 생성**
-    
+
     ```
     GCP Console > 상단 프로젝트 드롭다운 > "새 프로젝트"
-    
+
     ```
-    
+
 2. **프로젝트 정보 입력**
     - 프로젝트 이름: `senior-mhealth-your-name` (예: senior-mhealth-홍길동)
     - 프로젝트 ID: 자동 생성 또는 커스텀 (전역 고유해야 함)
@@ -459,7 +459,7 @@ gcloud config set project YOUR_PROJECT_ID
     예: senior-mhealth-your-name-a1b2c3
 
     ```
-    
+
 
 ### 2-3. 프로젝트 선택 및 확인 👤
 
@@ -469,13 +469,13 @@ gcloud config set project YOUR_PROJECT_ID
     - 상단 드롭다운에서 방금 생성한 프로젝트 선택
     - 대시보드에서 프로젝트 정보 확인
 2. **프로젝트 ID 확인**
-    
+
     ```bash
     # Cloud Shell에서 확인 (Console 우측 상단 터미널 아이콘 클릭)
     gcloud config get-value project
-    
+
     ```
-    
+
 
 ### 2-4. 결제 설정 👤
 
@@ -523,16 +523,16 @@ FIREBASE_PROJECT_ID=your-project-id
 
 > 🤖 AI에게 요청:
 "GCP 프로젝트의 IAM 권한을 설정해줘:
-> 
+>
 > 1. 현재 로그인 상태 확인:
->     
+>
 >     ```bash
 >     gcloud auth list --filter=status:ACTIVE
->     
+>
 >     ```
->     
+>
 > 2. 현재 사용자에게 Owner 권한 부여:
->     
+>
 >     ```bash
 >     # .env에서 GCP_PROJECT_ID 읽기
 >     # 현재 계정 이메일 가져오기
@@ -541,52 +541,52 @@ FIREBASE_PROJECT_ID=your-project-id
 >     gcloud projects add-iam-policy-binding [GCP_PROJECT_ID] \\
 >       --member="user:[YOUR_EMAIL]" \\
 >       --role="roles/owner"
->     
+>
 >     ```
->     
+>
 > 3. 권한 부여 확인:
->     
+>
 >     ```bash
 >     gcloud projects get-iam-policy [GCP_PROJECT_ID] \\
 >       --flatten="bindings[].members" \\
 >       --filter="bindings.members:user:[YOUR_EMAIL]"
->     
+>
 >     ```
->     
+>
 > 4. 문제 발생 시 수동 설정 안내 제공"
 
 ### 4-2. 서비스 계정 생성 및 키 설정 🤖
 
 > 🤖 AI에게 요청:
 "GCP 서비스 계정을 생성하고 필요한 모든 권한을 설정해줘:
-> 
+>
 > 1. **서비스 계정 생성**:
->     
+>
 >     ```bash
 >     # .env에서 GCP_PROJECT_ID 읽기
 >     # 서비스 계정 생성
 >     gcloud iam service-accounts create automation-sa \\
 >       --display-name="Automation Service Account" \\
 >       --project=[GCP_PROJECT_ID]
->     
+>
 >     ```
->     
+>
 > 2. **필수 IAM 역할 부여** (모든 역할 자동 적용):
->     
+>
 >     ```bash
 >     # 서비스 계정 이메일 설정
 >     SERVICE_ACCOUNT=automation-sa@[GCP_PROJECT_ID].iam.gserviceaccount.com
->     
+>
 >     # Owner 역할 (전체 권한)
 >     gcloud projects add-iam-policy-binding [GCP_PROJECT_ID] \\
 >       --member="serviceAccount:${SERVICE_ACCOUNT}" \\
 >       --role="roles/owner"
->     
+>
 >     # Firebase Admin 역할
 >     gcloud projects add-iam-policy-binding [GCP_PROJECT_ID] \\
 >       --member="serviceAccount:${SERVICE_ACCOUNT}" \\
 >       --role="roles/firebase.admin"
->     
+>
 >     # 추가 필수 역할들
 >     - roles/serviceusage.serviceUsageAdmin (API 관리)
 >     - roles/iam.serviceAccountUser (서비스 계정 사용)
@@ -597,61 +597,61 @@ FIREBASE_PROJECT_ID=your-project-id
 >     - roles/bigquery.admin (BigQuery 관리)
 >     - roles/run.admin (Cloud Run 관리)
 >     - roles/compute.admin (Compute Engine 관리)
->     
+>
 >     ```
->     
+>
 > 3. **서비스 계정 키 생성**:
->     
+>
 >     ```bash
 >     # 기존 키 확인 및 정리 (최대 10개 제한)
 >     gcloud iam service-accounts keys list \\
 >       --iam-account=${SERVICE_ACCOUNT} \\
 >       --filter="keyType:USER_MANAGED"
->     
+>
 >     # 새 키 생성 및 저장
 >     gcloud iam service-accounts keys create ./serviceAccountKey.json \\
 >       --iam-account=${SERVICE_ACCOUNT} \\
 >       --project=[GCP_PROJECT_ID]
->     
+>
 >     ```
->     
+>
 > 4. **키 파일 검증**:
->     
+>
 >     ```bash
 >     # 키 파일 크기 확인 (100 bytes 이상)
 >     # JSON 구조 검증
 >     # client_email 필드 추출 및 확인
->     
+>
 >     ```
->     
+>
 > 5. **환경 변수 설정**:
->     
+>
 >     ```bash
 >     export GOOGLE_APPLICATION_CREDENTIALS="./serviceAccountKey.json"
->     
+>
 >     ```
->     
+>
 > 6. **권한 테스트**:
->     
+>
 >     ```bash
 >     # 서비스 계정으로 인증
 >     gcloud auth activate-service-account --key-file=serviceAccountKey.json
->     
+>
 >     # 프로젝트 접근 테스트
 >     gcloud projects describe [GCP_PROJECT_ID]
->     
+>
 >     # 원래 계정으로 복귀
 >     gcloud config set account [ORIGINAL_ACCOUNT]
->     
+>
 >     ```
->     
+>
 > 7. **보안 설정 확인**:
 >     - serviceAccountKey.json이 .gitignore에 포함되어 있는지 확인
 >     - 파일 권한 설정 (읽기 전용)
 >     - 키 파일 백업 위치 안내
-> 
+>
 > 실패 시 다음 스크립트 직접 실행:
-> 
+>
 > - Windows: `setup/scripts/utils/create-service-account.bat`
 > - macOS/Linux: `setup/scripts/utils/create-service-account.sh`"
 
@@ -663,7 +663,7 @@ FIREBASE_PROJECT_ID=your-project-id
 
 > 🤖 AI에게 요청:
 "Firebase 프로젝트 연결을 위한 사전 준비 작업을 수행해줘:
-> 
+>
 > 1. 서비스 계정 키 파일 확인:
 >     - serviceAccountKey.json 파일이 프로젝트 루트에 있는지 확인
 >     - 없으면 Step 4-2에서 생성한 키 파일 위치 알려줘
@@ -678,23 +678,23 @@ FIREBASE_PROJECT_ID=your-project-id
 
 > 🤖 AI에게 요청:
 "GCP 프로젝트에 Firebase를 추가하고 연결해줘:
-> 
+>
 > 1. Firebase 프로젝트 추가:
->     
+>
 >     ```bash
 >     firebase projects:addfirebase [GCP_PROJECT_ID]
->     
+>
 >     ```
->     
+>
 >     - 이미 추가된 경우 스킵하고 다음 단계 진행
 >     - 실패 시 에러 메시지와 해결 방법 제시
 > 2. Firebase 프로젝트 설정:
->     
+>
 >     ```bash
 >     firebase use --add [GCP_PROJECT_ID] --alias default
->     
+>
 >     ```
->     
+>
 > 3. 서비스 계정 연결:
 >     - GOOGLE_APPLICATION_CREDENTIALS 환경변수 설정
 >     - serviceAccountKey.json 경로 자동 설정
@@ -707,7 +707,7 @@ FIREBASE_PROJECT_ID=your-project-id
 **⚠️ 중요: Firestore는 최초 1회 수동 설정 필요**
 
 > 👤 사용자 직접 작업:
-> 
+>
 > 1. [Firebase Console](https://console.firebase.google.com/) 접속
 > 2. 프로젝트 선택 → Firestore Database 클릭
 > 3. "데이터베이스 만들기" 클릭
@@ -718,24 +718,24 @@ FIREBASE_PROJECT_ID=your-project-id
 
 > 🤖 AI에게 요청 (Firestore 생성 후):
 "Firestore가 생성되었는지 확인하고 초기 컬렉션을 설정해줘:
-> 
+>
 > 1. Firestore 초기 데이터 설정:
->     
+>
 >     ```jsx
 >     // setup/scripts/init-firestore.js
 >     const db = admin.firestore();
->     
+>
 >     // 초기 컬렉션 생성 예시
 >     await db.collection("users").doc("sample_user").set({
 >       email: "test@example.com",
 >       name: "Test User",
 >       role: "patient",
 >     });
->     
+>
 >     ```
->     
+>
 > 2. 보안 규칙 설정:
->     
+>
 >     ```jsx
 >     // setup/scripts/firestore.rules
 >     rules_version = '2';
@@ -748,11 +748,11 @@ FIREBASE_PROJECT_ID=your-project-id
 >         // 다른 컬렉션들도 유사한 방식으로 설정
 >       }
 >     }
->     
+>
 >     ```
->     
+>
 > 3. 인덱스 설정:
->     
+>
 >     ```json
 >     // setup/scripts/firestore.indexes.json
 >     {
@@ -766,34 +766,34 @@ FIREBASE_PROJECT_ID=your-project-id
 >         }
 >       ]
 >     }
->     
+>
 >     ```
->     
+>
 > 4. 설정 배포:
->     
+>
 >     ```bash
 >     firebase deploy --only firestore:rules
 >     firebase deploy --only firestore:indexes
 >     ```"
->     
+>
 >     ```
->     
+>
 
 ### 5-4. Authentication 설정 🤖
 
 > 🤖 AI에게 요청:
 "Firebase Authentication을 설정하고 테스트 사용자를 생성해줘:
-> 
+>
 > 1. Firebase Console에서 Authentication 활성화 확인
 > 2. 이메일/비밀번호 공급자 활성화:
->     
+>
 >     ```jsx
 >     // Firebase Admin SDK 사용
 >     const auth = admin.auth();
 >     // 설정 확인 및 필요시 수동 안내
->     
+>
 >     ```
->     
+>
 > 3. 테스트 사용자 생성:
 >     - [test@example.com](mailto:test@example.com) / Test123!
 >     - [admin@example.com](mailto:admin@example.com) / Admin123!
@@ -805,7 +805,7 @@ FIREBASE_PROJECT_ID=your-project-id
 
 > 🤖 AI에게 요청:
 "Cloud Storage를 설정하고 버킷을 구성해줘:
-> 
+>
 > 1. Storage 버킷 확인:
 >     - 기본 버킷: [project-id].appspot.com
 >     - 추가 버킷: [project-id].firebasestorage.app
@@ -813,7 +813,7 @@ FIREBASE_PROJECT_ID=your-project-id
 >     - setup/scripts/storage.rules 파일 내용 확인
 >     - 테스트 모드 규칙으로 임시 설정 (개발용)
 > 3. firebase.json 수정:
->     
+>
 >     ```json
 >     {
 >       "storage": [
@@ -823,53 +823,53 @@ FIREBASE_PROJECT_ID=your-project-id
 >         }
 >       ]
 >     }
->     
+>
 >     ```
->     
+>
 > 4. Storage 규칙 배포:
->     
+>
 >     ```bash
 >     firebase deploy --only storage
->     
+>
 >     ```
->     
+>
 >     - 실패 시 수동 설정 방법 안내"
 
 ### 5-6. Cloud Functions 환경 설정 🤖
 
 > 🤖 AI에게 요청:
 "Cloud Functions 환경을 설정해줘:
-> 
+>
 > 1. Functions 디렉토리 확인:
 >     - backend/functions 디렉토리 존재 확인
 >     - package.json 의존성 설치 상태 확인
 > 2. Functions 환경 변수 설정:
->     
+>
 >     ```bash
 >     firebase functions:config:set app.env="development" app.project_id="[GCP_PROJECT_ID]"
->     
+>
 >     ```
->     
+>
 > 3. Cloud Functions API 활성화:
->     
+>
 >     ```bash
 >     # 필수 API 활성화
 >     gcloud services enable cloudfunctions.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com
->     
+>
 >     ```
->     
+>
 > 4. IAM 권한 확인:
 >     - Cloud Functions Admin (roles/cloudfunctions.admin)
 >     - Cloud Build Editor (roles/cloudbuild.builds.editor)
 >     - Service Account User (roles/iam.serviceAccountUser)
 > 5. Functions 배포 테스트:
->     
+>
 >     ```bash
 >     cd backend/functions
 >     npm run deploy
->     
+>
 >     ```
->     
+>
 
 ### 5-7. Firebase 프로젝트 전체 초기화 🤖
 
@@ -881,7 +881,7 @@ FIREBASE_PROJECT_ID=your-project-id
 
 > 🤖 AI에게 요청:
 "Frontend와 Backend의 npm 패키지를 직접 설치해줘.
-> 
+>
 > - frontend/web 디렉토리의 package.json
 > - backend/functions 디렉토리의 package.json
 > - 각 디렉토리에서 npm install 자동 실행
@@ -891,7 +891,7 @@ FIREBASE_PROJECT_ID=your-project-id
 
 > 🤖 AI에게 요청:
 ".env 파일이 올바르게 설정되었는지 직접 검증하고 결과를 보여줘.
-> 
+>
 > - 필수 변수 자동 확인: GCP_PROJECT_ID, GCP_REGION, FIREBASE_PROJECT_ID
 > - serviceAccountKey.json 파일 존재 여부 즉시 체크
 > - .gitignore에 보안 파일들이 등록되어 있는지 검사하고 없으면 추가해줘"
@@ -902,7 +902,7 @@ FIREBASE_PROJECT_ID=your-project-id
 
 > 🤖 AI에게 요청:
 "다음 항목들이 모두 올바르게 설정되었는지 직접 테스트하고 결과를 보여줘:
-> 
+>
 > - GCP 프로젝트 ID와 로그인 상태 즉시 확인
 > - Firebase 프로젝트 연결 상태 자동 검증
 > - 모든 Firebase 서비스 활성화 여부 체크

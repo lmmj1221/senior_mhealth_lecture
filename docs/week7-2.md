@@ -45,6 +45,98 @@
 
 **이번 주차는 실습 중심으로 진행됩니다. 각 단계를 따라하며 실제로 APK를 만들어보세요!**
 
+## 0. Firebase 모바일 앱 등록 (사용자 수동 작업) 📱
+
+### 0-1. Firebase Console에서 모바일 앱 등록
+
+**⚠️ 중요**: 이 과정은 **사용자가 수동으로** Firebase Console에서 진행해야 합니다.
+
+#### Step 1: Firebase Console 접속
+1. [Firebase Console](https://console.firebase.google.com/) 접속
+2. 기존 프로젝트 `credible-runner-474101-f6` 선택
+
+#### Step 2: Android 앱 추가
+1. 프로젝트 개요 → **"앱 추가"** 버튼 클릭
+2. **Android** 선택
+3. **Android 패키지 이름** 입력: `com.seniormhealth.app` (또는 원하는 패키지명)
+4. **앱 닉네임** 입력: `Senior MHealth Mobile`
+5. **디버그 서명 인증서 SHA-1** (선택사항): 나중에 추가 가능
+6. **"앱 등록"** 클릭
+
+#### Step 3: google-services.json 다운로드
+1. **"google-services.json 다운로드"** 버튼 클릭
+2. 파일을 `frontend/mobile/android/app/` 폴더에 저장
+3. 파일명이 정확히 `google-services.json`인지 확인
+
+#### Step 4: Firebase SDK 설정 확인
+1. **"다음 단계"** 클릭하여 설정 가이드 확인
+2. **Android 패키지 이름** 기록: `com.seniormhealth.app`
+3. **앱 ID** 기록: `1:117743917401:android:xxxxxxxxx`
+
+### 0-2. Flutter 프로젝트 설정
+
+#### Step 1: firebase_options.dart 생성
+```bash
+# frontend/mobile 디렉토리에서 실행
+flutterfire configure --project=credible-runner-474101-f6
+```
+
+**설정 과정:**
+1. **Android 앱 선택**: 방금 등록한 Android 앱 선택
+2. **iOS 앱 선택**: `None` (Android만 사용)
+3. **Web 앱 선택**: `None` (모바일만 사용)
+4. **설정 완료**: `lib/firebase_options.dart` 파일 자동 생성
+
+#### Step 2: 파일 구조 확인
+```
+frontend/mobile/
+├── android/
+│   └── app/
+│       └── google-services.json  ✅ (다운로드한 파일)
+├── lib/
+│   └── firebase_options.dart     ✅ (FlutterFire로 생성)
+└── pubspec.yaml
+```
+
+### 0-3. Firebase 서비스 활성화 확인
+
+**Firebase Console에서 확인할 서비스들:**
+- ✅ **Authentication**: 이메일/비밀번호 로그인 활성화
+- ✅ **Firestore Database**: Native 모드로 설정
+- ✅ **Cloud Storage**: 파일 업로드용
+- ✅ **Cloud Messaging**: 푸시 알림용
+
+### 0-4. 보안 규칙 확인
+
+**Firestore Rules** (이미 설정되어 있어야 함):
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    match /calls/{callId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+```
+
+**Storage Rules** (이미 설정되어 있어야 함):
+```javascript
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /calls/{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+```
+
+---
+
 ### 📋 사전 체크리스트
 다음 항목들이 준비되었는지 확인하세요:
 

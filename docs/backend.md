@@ -1170,7 +1170,7 @@ async def analyze_voice(request: AnalysisRequest):
 **무슨 일이 일어났나?**
 - 📥 Cloud Run이 분석 요청 수신
 - 🎙️ Google Cloud Speech-to-Text API로 음성을 텍스트로 변환
-- 🧠 Vertex AI (Gemini)로 대화 내용 분석 (우울증, 인지 기능 등)
+- 🧠 Google AI Studio API (Gemini)로 대화 내용 분석 (우울증, 인지 기능 등)
 - 💾 분석 결과를 Firestore `analysis_results` 컬렉션에 저장
 
 ---
@@ -1257,7 +1257,7 @@ sequenceDiagram
     CloudFunctions->>CloudRunAI: AI 분석 요청
 
     CloudRunAI->>CloudRunAI: 음성 → 텍스트 변환 (STT)
-    CloudRunAI->>CloudRunAI: Vertex AI 대화 분석
+    CloudRunAI->>CloudRunAI: Google AI Studio API 대화 분석
     CloudRunAI->>Firestore: 분석 결과 저장
     Note over Firestore: analysis_results/{callId}
 
@@ -1277,7 +1277,7 @@ sequenceDiagram
 | 3️⃣ 파일 안정화 확인 | 3초 | 3~33초 |
 | 4️⃣ Firebase Storage 업로드 | 5~10초 | 8~43초 |
 | 5️⃣ Cloud Functions 트리거 | 0.5초 | 8.5~43.5초 |
-| 6️⃣ AI 음성 분석 (STT + Vertex AI) | 10~30초 | 18.5~73.5초 |
+| 6️⃣ AI 음성 분석 (STT + Google AI Studio API) | 10~30초 | 18.5~73.5초 |
 | 7️⃣ Firestore 저장 및 실시간 동기화 | 0.5초 | 19~74초 |
 | 8️⃣ FCM 푸시 알림 | 1초 | 20~75초 |
 
@@ -1303,7 +1303,7 @@ sequenceDiagram
 음성 파일 (.m4a)
   ↓ (STT API)
 텍스트 (대화 내용)
-  ↓ (Vertex AI)
+  ↓ (Google AI Studio API)
 분석 결과 (JSON)
   ↓ (Firestore)
 NoSQL 문서
@@ -3080,7 +3080,7 @@ gcloud run deploy ai-service \
 
 | 유형 | AWS | Google Cloud | Azure | Naver Cloud |
 |------|-----|--------------|-------|-------------|
-| **AI API** | Bedrock | **Vertex AI** ⭐ | OpenAI Service | Clova |
+| **AI API** | Bedrock | **Google AI Studio API** ⭐ | OpenAI Service | Clova |
 | **음성인식** | Transcribe | Speech-to-Text | Speech | Clova Speech |
 | **이미지인식** | Rekognition | Vision AI | Computer Vision | Clova OCR |
 
@@ -3180,7 +3180,7 @@ graph TB
 
     C --> E[Firestore<br/>관리형 DB]
     D --> E
-    D --> F[Vertex AI<br/>관리형 AI]
+    D --> F[Google AI Studio API<br/>관리형 AI]
     D --> G[Cloud Storage<br/>관리형 저장소]
 
     style B fill:#e1f5ff
@@ -3239,7 +3239,7 @@ graph TB
 | **FaaS** | Lambda | Cloud Functions | Functions | Functions |
 | **컨테이너** | Fargate/AppRunner | **Cloud Run** ⭐ | Container Apps | - |
 | **NoSQL** | DynamoDB | **Firestore** ⭐ | Cosmos DB | MongoDB |
-| **AI** | Bedrock | **Vertex AI** ⭐ | OpenAI Service | Clova |
+| **AI** | Bedrock | **Google AI Studio API** ⭐ | OpenAI Service | Clova |
 | **무료 티어** | 12개월 | 90일 $300 | 12개월 | 3개월 $100 |
 | **학생 할인** | Educate | Education | Students | - |
 | **한국어 지원** | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
@@ -3249,7 +3249,7 @@ graph TB
 
 1. ✅ **Firebase 통합** - Auth, Firestore 완벽 연동
 2. ✅ **Cloud Run** - 가장 쉬운 서버리스 컨테이너
-3. ✅ **Vertex AI** - Gemini API 직접 사용
+3. ✅ **Google AI Studio API** - Gemini API 직접 사용
 4. ✅ **한국 리전** - 서울 리전 (낮은 레이턴시)
 5. ✅ **교육 크레딧** - $300 무료 크레딧
 6. ✅ **문서 품질** - 한국어 문서 우수
@@ -4469,7 +4469,7 @@ graph TB
 
     subgraph Backend["백엔드 서비스"]
         B1[API Service<br/>FastAPI<br/>Cloud Run<br/>🚪 모든 요청의 관문]
-        B2[AI Service<br/>Vertex AI/Gemini<br/>Cloud Run]
+        B2[AI Service<br/>Google AI Studio API/Gemini<br/>Cloud Run]
     end
 
     subgraph Database["데이터 저장소"]
@@ -4481,7 +4481,7 @@ graph TB
     subgraph Cloud["GCP 인프라"]
         D1[Cloud Run<br/>서버리스 배포]
         D2[Cloud Storage<br/>파일 저장소]
-        D3[Vertex AI<br/>ML 플랫폼]
+        D3[Google AI Studio API<br/>ML 플랫폼]
     end
 
     A1 -->|REST API| B1
@@ -4529,7 +4529,7 @@ graph TB
 **아키텍처 핵심**:
 - 모든 클라이언트(Web/Mobile) → API Service (게이트웨이)
 - API Service → AI Service (내부 통신)
-- AI Service → Vertex AI (AI 처리)
+- AI Service → Google AI Studio API (AI 처리)
 
 ---
 
@@ -4557,12 +4557,12 @@ graph TB
 
     subgraph "🔧 Service Layer (services/*.py)"
         S1[🎤 stt_service<br/>speech_to_text.py]
-        S2[🧠 analyzer<br/>vertex_ai_analyzer.py]
+        S2[🧠 analyzer<br/>google_ai_analyzer.py]
     end
 
     subgraph "☁️ External APIs (Google Cloud)"
         G1[🎤 Speech-to-Text API]
-        G2[🤖 Vertex AI Gemini]
+        G2[🤖 Google AI Studio API Gemini]
     end
 
     U1 --> E1
@@ -4616,9 +4616,9 @@ graph TB
 📡 main.py:analyze_text(request: AnalysisRequest)
     ↓ 입력 검증
     ↓ analyzer.analyze_mental_health(request)
-🧠 vertex_ai_analyzer.py:analyze_mental_health()
+🧠 google_ai_analyzer.py:analyze_mental_health()
     ↓ Gemini API 호출
-☁️ Vertex AI Gemini
+☁️ Google AI Studio API Gemini
     ↓ AI 분석 결과
 📦 {"depression_score": 75, "anxiety_score": 60, ...}
 ```
@@ -4654,8 +4654,8 @@ graph TB
     │
     └─ 🎬 2막: AI 분석
         ↓ analyzer.analyze_mental_health()
-        🧠 vertex_ai_analyzer.py
-        ↓ Vertex AI Gemini
+        🧠 google_ai_analyzer.py
+        ↓ Google AI Studio API Gemini
         ☁️ Gemini API
         ↓ AI 분석 결과
 📦 {"depression_score": 75, "transcript": "우울해요...", ...}
@@ -4681,7 +4681,7 @@ User Request
 │  │  ├─ validate_audio_file()           │
 │  │  └─ transcribe_audio()              │
 │  │                                      │
-│  └─ vertex_ai_analyzer.py               │
+│  └─ google_ai_analyzer.py               │
 │     ├─ initialize()                     │
 │     └─ analyze_mental_health()          │
 └─────────────────────────────────────────┘
@@ -4689,7 +4689,7 @@ User Request
 ┌─────────────────────────────────────────┐
 │  ☁️ Google Cloud Services               │
 │  ├─ Speech-to-Text API                  │
-│  └─ Vertex AI (Gemini)                  │
+│  └─ Google AI Studio API (Gemini)       │
 └─────────────────────────────────────────┘
 ```
 
@@ -4765,7 +4765,7 @@ backend/ai-service/
 │   ├── main.py                     # 🌐 API 엔드포인트 (컨트롤러)
 │   └── services/
 │       ├── speech_to_text.py       # 🎤 음성 인식 서비스
-│       └── vertex_ai_analyzer.py   # 🧠 AI 분석 서비스
+│       └── google_ai_analyzer.py   # 🧠 AI 분석 서비스
 ├── requirements.txt                # 📦 필요한 패키지 목록
 ├── Dockerfile                      # 🐳 Docker 설정
 └── README.md                       # 📖 프로젝트 설명
@@ -4791,7 +4791,7 @@ backend/ai-service/
 │           "실제 일을 처리하는 전문가들"                    │
 │                                                         │
 │  🎤 STT팀: speech_to_text.py                           │
-│  🧠 AI팀: vertex_ai_analyzer.py                        │
+│  🧠 AI팀: google_ai_analyzer.py                        │
 │  📋 업무: 음성 인식, AI 분석, 데이터 처리                 │
 └─────────────────────────────────────────────────────────┘
                             ⬇️
@@ -4801,7 +4801,7 @@ backend/ai-service/
 │            "실제 기술을 제공하는 전문 업체"                │
 │                                                         │
 │  ☁️ Google Speech-to-Text                              │
-│  🤖 Google Vertex AI (Gemini)                         │
+│  🤖 Google AI Studio API (Gemini)                     │
 │  📋 업무: 음성 인식 기술, AI 모델 제공                    │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -4908,14 +4908,14 @@ bad_data = {"user_id": 123, "language_code": "invalid"}        # ❌ 차단
 │  🎤 Speech-to-Text 공장                                 │
 │  "음성을 받아서 → 🔄 마법 처리 → 📝 텍스트로 변환"        │
 │                                                         │
-│  🧠 Vertex AI (Gemini) 공장                            │
+│  🧠 Google AI Studio API (Gemini) 공장                  │
 │  "텍스트를 받아서 → 🤖 AI 분석 → 📊 정신건강 결과"        │
 └─────────────────────────────────────────────────────────┘
 ```
 
 ```python
 from google.cloud import speech          # 🎤 음성 인식 공장 연결
-import vertexai                         # 🧠 AI 분석 공장 연결
+import google.generativeai as genai     # 🧠 AI 분석 공장 연결
 
 # 🏭 공장 가동 과정
 audio_file = "어머니와의_통화.m4a"       # 🎤 원료 투입
@@ -4966,7 +4966,7 @@ async def detailed_health():
     health_status = {
         "status": "healthy",
         "components": {
-            "vertex_ai_analyzer": "ready" if analyzer else "not_initialized",
+            "google_ai_analyzer": "ready" if analyzer else "not_initialized",
             "gcp_project": "configured" if os.getenv("GCP_PROJECT_ID") else "missing"
         },
         "environment": {
@@ -4983,7 +4983,7 @@ async def detailed_health():
 {
   "status": "healthy",
   "components": {
-    "vertex_ai_analyzer": "ready",
+    "google_ai_analyzer": "ready",
     "gcp_project": "configured"
   },
   "environment": {
@@ -5141,8 +5141,8 @@ async def get_supported_audio_formats():
 │  ├── 📝 AudioRequest           (음성 요청서 양식)            │
 │  └── 📋 TranscriptionResponse  (음성 인식 결과지)           │
 │                                                             │
-│  📦 vertex_ai_analyzer.py에서 가져올 블록들:                │
-│  ├── 🧠 VertexAIAnalyzer      (AI 분석 엔진)               │
+│  📦 google_ai_analyzer.py에서 가져올 블록들:                │
+│  ├── 🧠 GoogleAIAnalyzer      (AI 분석 엔진)               │
 │  ├── 📄 AnalysisRequest       (분석 요청서 양식)            │
 │  └── 📊 AnalysisResponse      (분석 결과지)                │
 └─────────────────────────────────────────────────────────────┘
@@ -5155,8 +5155,8 @@ from app.services.speech_to_text import (
     AudioRequest,             # 📝 음성 작업 지시서
     TranscriptionResponse     # 📋 음성 작업 완료 보고서
 )
-from app.services.vertex_ai_analyzer import (
-    VertexAIAnalyzer,        # 🧠 AI 분석 전문가
+from app.services.google_ai_analyzer import (
+    GoogleAIAnalyzer,        # 🧠 AI 분석 전문가
     AnalysisRequest,         # 📄 분석 작업 지시서
     AnalysisResponse         # 📊 분석 작업 완료 보고서
 )
@@ -5175,7 +5175,7 @@ from app.services.vertex_ai_analyzer import (
 │  └── 🎤 stt_service = None   (음성 인식 기계 - 대기중)       │
 │                                                             │
 │  🔄 공장 가동 절차 (lifespan 함수)                          │
-│  ├── 1️⃣ 전원 켜기: analyzer = VertexAIAnalyzer()          │
+│  ├── 1️⃣ 전원 켜기: analyzer = GoogleAIAnalyzer()          │
 │  ├── 2️⃣ 기계 점검: stt_service = SpeechToTextService()    │
 │  ├── 3️⃣ 생산 시작: yield (24시간 가동)                     │
 │  └── 4️⃣ 전원 끄기: 공장 종료 시                            │
@@ -5193,7 +5193,7 @@ async def lifespan(app: FastAPI):
     global analyzer, stt_service
 
     # 🔌 기계들 전원 켜기 (1회만!)
-    analyzer = VertexAIAnalyzer()        # 🤖 AI 기계 가동
+    analyzer = GoogleAIAnalyzer()        # 🤖 AI 기계 가동
     stt_service = SpeechToTextService()  # 🎤 음성 기계 가동
 
     yield  # 🏭 공장 24시간 가동 중...
