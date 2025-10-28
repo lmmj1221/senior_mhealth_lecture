@@ -28,10 +28,10 @@ echo "1054806937473" | vercel env add NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID p
 echo "1:1054806937473:web:f0a71476f665350937a280" | vercel env add NEXT_PUBLIC_FIREBASE_APP_ID production --force
 
 # API configuration
-echo "https://senior-mhealth-api-1054806937473.asia-northeast3.run.app" | vercel env add NEXT_PUBLIC_API_BASE_URL production --force
+echo "https://asia-northeast3-credible-runner-474101-f6.cloudfunctions.net/api" | vercel env add NEXT_PUBLIC_API_BASE_URL production --force
 echo "https://senior-mhealth-ai-du6z6zbl2a-du.a.run.app" | vercel env add NEXT_PUBLIC_AI_SERVICE_URL production --force
-echo "https://senior-mhealth-api-1054806937473.asia-northeast3.run.app" | vercel env add NEXT_PUBLIC_API_URL production --force
-echo "https://senior-mhealth-api-1054806937473.asia-northeast3.run.app" | vercel env add NEXT_PUBLIC_USER_API_URL production --force
+echo "https://asia-northeast3-credible-runner-474101-f6.cloudfunctions.net/api" | vercel env add NEXT_PUBLIC_API_URL production --force
+echo "https://asia-northeast3-credible-runner-474101-f6.cloudfunctions.net/api" | vercel env add NEXT_PUBLIC_USER_API_URL production --force
 echo "https://senior-mhealth.vercel.app" | vercel env add NEXT_PUBLIC_APP_URL production --force
 
 # FCM configuration

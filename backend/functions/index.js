@@ -7,6 +7,27 @@ const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const axios = require('axios');
 
+// 환경변수 검증
+const validateEnvironment = () => {
+  const requiredEnvVars = ['GCLOUD_PROJECT'];
+  const warnings = [];
+
+  requiredEnvVars.forEach(varName => {
+    if (!process.env[varName]) {
+      warnings.push(`Warning: 환경변수 ${varName}이 설정되지 않았습니다. Firebase 런타임에서 자동 설정됩니다.`);
+    }
+  });
+
+  if (warnings.length > 0) {
+    warnings.forEach(warning => functions.logger.warn(warning));
+  }
+
+  return true;
+};
+
+// 환경 검증 실행
+validateEnvironment();
+
 // Firebase Admin 초기화
 admin.initializeApp();
 
@@ -121,7 +142,7 @@ exports.processVoiceFile = onObjectFinalized({
   region: 'asia-northeast3',
   timeoutSeconds: 540,
   memory: '1GiB',
-  bucket: 'credible-runner-474101-f6.firebasestorage.app'
+  bucket: `${process.env.GCLOUD_PROJECT}.firebasestorage.app`
 }, async (event) => {
     const object = event.data;
     const filePath = object.name;
@@ -216,8 +237,9 @@ exports.processVoiceFile = onObjectFinalized({
             }
           );
           
-          functions.logger.info('🎉 AI 분석 요청 성공:', response.data);
-          
+          functions.logger.info('🎉 AI 분석 요청 성공');
+          functions.logger.info('📊 AI 응답 데이터:', JSON.stringify(response.data).substring(0, 200));
+
           // 4-4. 분석 결과 Firestore에 저장
           await callDocRef.update({
             analysisStatus: 'completed',
@@ -225,7 +247,37 @@ exports.processVoiceFile = onObjectFinalized({
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             errorMessage: admin.firestore.FieldValue.delete() // 기존 에러 메시지 삭제
           });
-          
+          functions.logger.info('✅ Firestore 분석 결과 저장 완료');
+
+          // 4-4a. public_analyses 컬렉션에도 저장 (공유용)
+          try {
+            await db.collection('public_analyses').doc(callId).set({
+              callId: callId,
+              userId: userId,
+              seniorId: seniorId,
+              summary: response.data.summary || response.data.emotional_state || response.data.health_summary || '분석 완료',
+              analysisResult: response.data,
+              filePath: filePath,
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+              expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30일 후 만료
+              isPublic: true
+            });
+            functions.logger.info('✅ public_analyses 컬렉션 저장 완료:', callId);
+          } catch (publicSaveError) {
+            functions.logger.error('⚠️ public_analyses 저장 실패 (계속 진행):', publicSaveError);
+          }
+
+          // 4-5. FCM 알림 전송 (Week 7 추가)
+          try {
+            functions.logger.info('📬 FCM 알림 전송 시작');
+            functions.logger.info('📬 FCM 파라미터:', { userId, callId, seniorId });
+            await sendAnalysisCompleteNotification(userId, callId, seniorId, response.data);
+            functions.logger.info('✅ FCM 알림 전송 완료');
+          } catch (fcmError) {
+            functions.logger.error('❌ FCM 알림 전송 중 오류 발생:', fcmError);
+            functions.logger.error('❌ FCM 오류 스택:', fcmError.stack);
+          }
+
         } catch (aiError) {
           let errorMessage = aiError.message;
           if (aiError.response) {
@@ -358,6 +410,511 @@ function sendError(res, statusCode, message, error = null) {
     error: error
   });
 }
+
+// ============================================================================
+// Week 7 추가 기능: FCM 알림 시스템
+// ============================================================================
+
+/**
+ * FCM 토큰 등록 API
+ * POST /registerFCMToken
+ *
+ * Body: {
+ *   userId: string,
+ *   token: string,
+ *   platform: 'mobile' | 'web',
+ *   email: string (optional)
+ * }
+ */
+exports.registerFCMToken = functions.region('asia-northeast3').https.onRequest(async (req, res) => {
+  // CORS 처리
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Preflight request 처리
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const { userId, token, platform, email } = req.body;
+
+  // 필수 파라미터 검증
+  if (!userId || !token) {
+    functions.logger.error('❌ 필수 파라미터 누락:', { userId, token: token ? 'exists' : 'missing' });
+    return res.status(400).json({ error: 'userId and token are required' });
+  }
+
+  try {
+    functions.logger.info('📝 FCM 토큰 등록 요청:', { userId, platform, email });
+
+    // Firestore에 FCM 토큰 저장 (merge 옵션으로 기존 필드 유지)
+    await db.collection('users').doc(userId).set({
+      fcmToken: token,
+      fcmPlatform: platform || 'unknown',
+      fcmUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      email: email || null
+    }, { merge: true });
+
+    functions.logger.info('✅ FCM 토큰 등록 완료:', userId);
+
+    res.json({
+      success: true,
+      message: 'Token registered successfully',
+      userId: userId
+    });
+  } catch (error) {
+    functions.logger.error('❌ FCM 토큰 등록 실패:', error);
+    res.status(500).json({
+      error: error.message,
+      message: 'Failed to register FCM token'
+    });
+  }
+});
+
+/**
+ * AI 분석 완료 알림 전송 (FCM)
+ *
+ * @param {string} userId - 사용자 ID
+ * @param {string} callId - 통화 ID (분석 ID로도 사용)
+ * @param {string} seniorId - 시니어 ID
+ * @param {object} analysisResult - AI 분석 결과 객체
+ */
+async function sendAnalysisCompleteNotification(userId, callId, seniorId, analysisResult) {
+  try {
+    functions.logger.info('📲 FCM 알림 전송 함수 시작:', { userId, callId, seniorId });
+
+    // 1. 사용자 문서에서 FCM 토큰 가져오기
+    functions.logger.info('📱 사용자 문서 조회 시작:', userId);
+    const userDoc = await db.collection('users').doc(userId).get();
+
+    if (!userDoc.exists) {
+      functions.logger.warning('⚠️ 사용자 문서를 찾을 수 없음:', userId);
+      return;
+    }
+
+    const userData = userDoc.data();
+    functions.logger.info('📱 사용자 데이터:', {
+      hasFcmToken: !!userData.fcmToken,
+      fcmPlatform: userData.fcmPlatform,
+      email: userData.email
+    });
+
+    if (!userData.fcmToken) {
+      functions.logger.info('⚠️ FCM 토큰이 없습니다:', userId);
+      return;
+    }
+
+    // 2. 분석 결과에서 요약 정보 추출
+    // AI 서비스에서 반환한 실제 필드명 사용
+    const summary = analysisResult.emotional_state || analysisResult.summary || analysisResult.health_summary || '분석이 완료되었습니다.';
+    const confidence = analysisResult.confidence || analysisResult.confidence_score || 0;
+
+    functions.logger.info('📊 분석 결과 정보:', {
+      hasEmotionalState: !!analysisResult.emotional_state,
+      hasSummary: !!analysisResult.summary,
+      confidence: confidence,
+      keys: Object.keys(analysisResult).slice(0, 10)
+    });
+
+    // 3. FCM 메시지 생성
+    const message = {
+      token: userData.fcmToken,
+      notification: {
+        title: '음성 분석 완료 🎉',
+        body: summary.substring(0, 100), // 알림은 100자로 제한
+      },
+      data: {
+        type: 'analysis_complete',
+        callId: callId,
+        seniorId: seniorId || '',
+        analysisId: callId, // Flutter 앱과 호환
+        summary: summary,
+        confidence: confidence.toString(),
+        timestamp: new Date().toISOString(),
+        webUrl: `https://senior-mhealth.vercel.app/analyses/${callId}` // 웹앱 상세보기 URL (수정됨)
+      },
+      android: {
+        priority: 'high',
+        notification: {
+          sound: 'default',
+          clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+          channelId: 'senior_mhealth_channel'
+        }
+      },
+      apns: {
+        payload: {
+          aps: {
+            sound: 'default',
+            badge: 1
+          }
+        }
+      }
+    };
+
+    // 4. FCM 전송
+    const response = await admin.messaging().send(message);
+    functions.logger.info('✅ FCM 알림 전송 완료:', { userId, messageId: response });
+
+  } catch (error) {
+    // FCM 전송 실패해도 전체 프로세스는 계속 진행
+    functions.logger.error('❌ FCM 알림 전송 실패:', error);
+
+    // 토큰 만료 오류인 경우 Firestore에서 토큰 제거
+    if (error.code === 'messaging/registration-token-not-registered' ||
+        error.code === 'messaging/invalid-registration-token') {
+      functions.logger.info('🗑️ 만료된 FCM 토큰 제거:', userId);
+      await db.collection('users').doc(userId).update({
+        fcmToken: admin.firestore.FieldValue.delete(),
+        fcmPlatform: admin.firestore.FieldValue.delete(),
+        fcmUpdatedAt: admin.firestore.FieldValue.serverTimestamp()
+      }).catch(err => functions.logger.error('FCM 토큰 제거 실패:', err));
+    }
+  }
+}
+
+// ============================================================================
+// Week 7 추가 기능: 모바일 앱 API (Express 기반)
+// ============================================================================
+
+/**
+ * Week 7: 모바일 앱을 위한 Express 기반 통합 API
+ *
+ * 엔드포인트:
+ * - GET /health - Health check
+ * - POST /api/audio/upload - 음성 파일 업로드
+ * - POST /api/health-data - 건강 데이터 생성
+ * - GET /api/health-data/:userId - 건강 데이터 조회
+ */
+
+const express = require('express');
+const cors = require('cors');
+const { Storage } = require('@google-cloud/storage');
+
+// Express 앱 및 Storage 초기화
+const app = express();
+const storage = new Storage();
+const bucketName = process.env.GCP_PROJECT_ID ?
+  `${process.env.GCP_PROJECT_ID}.appspot.com` :
+  `${process.env.GCLOUD_PROJECT}.appspot.com`;
+const bucket = storage.bucket(bucketName);
+
+// Multer 설정 (메모리 스토리지 사용)
+const multer = require('multer');
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB 제한
+  }
+});
+
+// CORS 설정
+app.use(cors({
+  origin: true, // 모든 origin 허용 (개발 환경)
+  credentials: true
+}));
+
+// JSON 파싱
+app.use(express.json());
+
+// ============================================================================
+// 엔드포인트 1: Health Check
+// ============================================================================
+
+/**
+ * GET /health
+ * 서버 상태 확인
+ */
+app.get('/health', (req, res) => {
+  res.json({
+    status: "healthy",
+    timestamp: new Date().toISOString(),
+    version: "1.0.0",
+    service: "senior-mhealth-backend"
+  });
+});
+
+// ============================================================================
+// 엔드포인트 2: 음성 파일 업로드
+// ============================================================================
+
+/**
+ * POST /api/audio/upload
+ * 음성 파일 업로드 (multer 사용)
+ *
+ * Headers: Authorization: Bearer <token>
+ * Body (multipart/form-data):
+ *   - audio: File
+ *   - seniorId: string (optional)
+ */
+app.post('/audio/upload', authenticateUser, upload.single('audio'), async (req, res) => {
+  try {
+    const file = req.file;
+    const userId = req.user.uid;
+    const seniorId = req.body.seniorId || 'default';
+
+    if (!file) {
+      return res.status(400).json({ error: '파일이 없습니다' });
+    }
+
+    functions.logger.info('📤 음성 파일 업로드 요청:', {
+      userId,
+      seniorId,
+      fileName: file.originalname,
+      size: file.size
+    });
+
+    // 고유한 callId 생성
+    const callId = `call_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // Firebase Storage 경로: calls/{userId}/{seniorId}/{callId}/filename
+    const fileName = `calls/${userId}/${seniorId}/${callId}/${file.originalname}`;
+    const fileUpload = bucket.file(fileName);
+
+    // 파일 업로드 스트림 생성
+    const stream = fileUpload.createWriteStream({
+      metadata: {
+        contentType: file.mimetype,
+        metadata: {
+          userId: userId,
+          seniorId: seniorId,
+          callId: callId,
+          uploadedAt: new Date().toISOString(),
+        },
+      },
+    });
+
+    // 스트림 에러 처리
+    stream.on('error', (err) => {
+      functions.logger.error('❌ Storage 업로드 실패:', err);
+      res.status(500).json({ error: '파일 저장 실패' });
+    });
+
+    // 스트림 완료 처리
+    stream.on('finish', async () => {
+      try {
+        // Firestore에 통화 메타데이터 저장
+        await db.collection('users').doc(userId).collection('calls').doc(callId).set({
+          callId: callId,
+          userId: userId,
+          seniorId: seniorId,
+          fileName: fileName,
+          originalName: file.originalname,
+          size: file.size,
+          mimeType: file.mimetype,
+          uploadedAt: admin.firestore.FieldValue.serverTimestamp(),
+          status: 'uploaded',
+          analysisStatus: 'pending',
+          storagePath: fileName
+        });
+
+        functions.logger.info('✅ 음성 파일 업로드 완료:', callId);
+
+        res.json({
+          success: true,
+          callId: callId,
+          storagePath: fileName,
+          message: '파일 업로드 성공'
+        });
+      } catch (error) {
+        functions.logger.error('❌ Firestore 저장 실패:', error);
+        res.status(500).json({ error: 'Firestore 저장 실패' });
+      }
+    });
+
+    // 파일 버퍼 전송
+    stream.end(file.buffer);
+
+  } catch (error) {
+    functions.logger.error('❌ 음성 업로드 실패:', error);
+    res.status(500).json({ error: '업로드 실패' });
+  }
+});
+
+// ============================================================================
+// 엔드포인트 3: 건강 데이터 생성
+// ============================================================================
+
+/**
+ * POST /api/health-data
+ * 건강 데이터 생성
+ *
+ * Headers: Authorization: Bearer <token>
+ * Body: {
+ *   type: string (예: 'blood_pressure', 'heart_rate'),
+ *   value: number,
+ *   unit: string,
+ *   timestamp: string (ISO 8601)
+ * }
+ */
+app.post('/health-data', authenticateUser, async (req, res) => {
+  try {
+    const { type, value, unit, timestamp } = req.body;
+    const userId = req.user.uid;
+
+    // 필수 파라미터 검증
+    if (!type || value === undefined || !unit) {
+      return res.status(400).json({
+        error: 'type, value, unit are required'
+      });
+    }
+
+    functions.logger.info('📊 건강 데이터 생성 요청:', { userId, type, value });
+
+    const healthData = {
+      userId: userId,
+      type: type,
+      value: value,
+      unit: unit,
+      timestamp: timestamp ?
+        admin.firestore.Timestamp.fromDate(new Date(timestamp)) :
+        admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    const docRef = await db.collection('healthData').add(healthData);
+
+    functions.logger.info('✅ 건강 데이터 생성 완료:', docRef.id);
+
+    res.json({
+      success: true,
+      id: docRef.id,
+      data: healthData
+    });
+  } catch (error) {
+    functions.logger.error('❌ 건강 데이터 생성 실패:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// 엔드포인트 4: 건강 데이터 조회
+// ============================================================================
+
+/**
+ * GET /api/health-data/:userId
+ * 건강 데이터 조회
+ *
+ * Headers: Authorization: Bearer <token>
+ * Query Parameters:
+ *   - startDate: string (ISO 8601, optional)
+ *   - endDate: string (ISO 8601, optional)
+ *   - type: string (optional)
+ */
+app.get('/health-data/:userId', authenticateUser, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { startDate, endDate, type } = req.query;
+
+    // 본인의 데이터만 조회 가능 (간단한 권한 검증)
+    if (req.user.uid !== userId) {
+      return res.status(403).json({ error: 'Forbidden: You can only access your own data' });
+    }
+
+    functions.logger.info('📋 건강 데이터 조회 요청:', { userId, type, startDate, endDate });
+
+    let query = db.collection('healthData').where('userId', '==', userId);
+
+    // 날짜 필터
+    if (startDate) {
+      query = query.where('timestamp', '>=', admin.firestore.Timestamp.fromDate(new Date(startDate)));
+    }
+    if (endDate) {
+      query = query.where('timestamp', '<=', admin.firestore.Timestamp.fromDate(new Date(endDate)));
+    }
+
+    // 타입 필터
+    if (type) {
+      query = query.where('type', '==', type);
+    }
+
+    const snapshot = await query.orderBy('timestamp', 'desc').get();
+    const data = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    functions.logger.info('✅ 건강 데이터 조회 완료:', { count: data.length });
+
+    res.json({
+      success: true,
+      count: data.length,
+      data: data
+    });
+  } catch (error) {
+    functions.logger.error('❌ 건강 데이터 조회 실패:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// 엔드포인트 5: 공개 분석 결과 조회 (인증 불필요)
+// ============================================================================
+
+/**
+ * GET /api/v1/calls/public/analysis/:callId
+ * 공개 분석 결과 조회 - public_analyses 컬렉션에서 조회
+ *
+ * Parameters:
+ *   - callId: 분석 ID
+ *
+ * Response:
+ *   - success: boolean
+ *   - data: 분석 결과 데이터
+ */
+app.get('/api/v1/calls/public/analysis/:callId', async (req, res) => {
+  try {
+    const { callId } = req.params;
+
+    functions.logger.info('🔍 공개 분석 결과 조회 요청:', callId);
+
+    // public_analyses 컬렉션에서 조회
+    const publicDoc = await db.collection('public_analyses').doc(callId).get();
+
+    if (!publicDoc.exists) {
+      functions.logger.warn('⚠️ 분석 결과를 찾을 수 없음:', callId);
+      return res.status(404).json({
+        success: false,
+        error: '분석 결과를 찾을 수 없습니다'
+      });
+    }
+
+    const data = publicDoc.data();
+    functions.logger.info('✅ 공개 분석 결과 조회 성공:', callId);
+
+    // 성공 응답
+    res.json({
+      success: true,
+      data: {
+        ...data,
+        id: publicDoc.id,
+        callId: callId
+      }
+    });
+
+  } catch (error) {
+    functions.logger.error('❌ 공개 분석 결과 조회 실패:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || '분석 결과 조회 중 오류가 발생했습니다'
+    });
+  }
+});
+
+// ============================================================================
+// API 함수 내보내기
+// ============================================================================
+
+/**
+ * Express 앱을 Cloud Functions로 내보내기
+ * 엔드포인트: https://asia-northeast3-{project-id}.cloudfunctions.net/api
+ */
+exports.api = functions.region('asia-northeast3').https.onRequest(app);
 
 // ============================================================================
 // 개발용 테스트 함수 (삭제 예정)

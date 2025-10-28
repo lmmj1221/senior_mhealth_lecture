@@ -13,7 +13,7 @@
     "test": "jest",
     "test:ci": "jest --ci --coverage --passWithNoTests",
     "test:watch": "jest --watch",
-    "deploy": "npm run build && firebase deploy --only hosting --project thematic-center-463215-m2",
+    "deploy": "npm run build && firebase deploy --only hosting",
     "deploy:preview": "node scripts/deploy.js preview",
     "deploy:production": "node scripts/deploy.js production",
     "vercel:deploy": "vercel --prod",

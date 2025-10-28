@@ -56,7 +56,7 @@ export interface Call {
   callId: string;
   userId: string;  // caregiverId 대신 userId 사용
   seniorId: string;
-  
+
   // 파일 정보
   fileName: string;
   storagePath: string;
@@ -64,24 +64,24 @@ export interface Call {
   fileSize: number;
   duration: number;
   mimeType: string;
-  
+
   // 상태 정보
   status: 'uploaded' | 'processing' | 'completed' | 'error';
   hasAnalysis: boolean;
   analysisCompletedAt?: Date | null;
-  
+
   // 타임스탬프
   createdAt: Date;
   updatedAt: Date;
   recordedAt: Date;
-  
+
   // 메타데이터
   metadata?: {
     source: 'mobile' | 'web' | 'api';
     version?: string;
     deviceInfo?: any;
   };
-  
+
   // 분석 결과 (선택적)
   // Firestore analysisResult 필드의 다양한 구조를 지원하기 위해 any 타입 사용
   analysis?: any;
@@ -181,11 +181,11 @@ export interface AnalysisInterpretation {
 
 class ApiClient {
   private baseUrl: string;
-  
+
     constructor() {
     // 환경변수에서 API 베이스 URL 가져오기 (올바른 방법)
-    // 사용자 API URL 사용 (deploy-web2.md 참조)
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://senior-mhealth-api-1054806937473.asia-northeast3.run.app';
+    // Firebase Functions API URL 사용
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://asia-northeast3-credible-runner-474101-f6.cloudfunctions.net/api';
     this.baseUrl = baseUrl;
 
     // 개발 환경에서 API URL 확인
@@ -193,7 +193,7 @@ class ApiClient {
       console.log('API Base URL:', this.baseUrl);
       console.log('Environment Variable:', process.env.NEXT_PUBLIC_API_BASE_URL);
     }
-    
+
     // Firebase 초기화
     try {
       initializeFirebase();
@@ -201,58 +201,58 @@ class ApiClient {
       console.error('Firebase 초기화 실패:', error);
     }
   }
-  
+
   // 인증 토큰 얻기
   private async getAuthToken(): Promise<string> {
     try {
       const auth = getAuth();
-      
+
       // Firebase Auth 초기화 완료까지 대기 (FCM → 웹 이동 시 필요)
       let user = auth.currentUser;
-      
+
       // 사용자가 없으면 최대 5초까지 대기
       if (!user) {
         console.log('사용자 인증 상태 대기 중...');
-        
+
         for (let i = 0; i < 10; i++) { // 0.5초씩 10번 = 5초
           await new Promise(resolve => setTimeout(resolve, 500));
           user = auth.currentUser;
-          
+
           if (user) {
             console.log('사용자 인증 확인됨:', user.email);
             break;
           }
         }
       }
-      
+
       if (!user) {
         throw new Error('사용자가 로그인되어 있지 않습니다.');
       }
-      
+
       return await user.getIdToken();
     } catch (error) {
       console.error('인증 토큰 획득 실패:', error);
       throw error;
     }
   }
-  
+
   // API 호출 함수
   private async fetchApi<T>(
-    endpoint: string, 
+    endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     try {
       const token = await this.getAuthToken();
       const url = `${this.baseUrl}${endpoint}`;
-      
+
       console.log('API 요청:', url); // 디버깅용
-      
+
       const headers = {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
         ...options.headers,
       };
-      
+
       const response = await fetch(url, {
         ...options,
         headers,
@@ -260,29 +260,29 @@ class ApiClient {
         mode: 'cors',
         credentials: 'omit',
       });
-      
+
       // 응답 상태 체크
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`API 오류 (${response.status}):`, errorText);
-        
+
         return {
           success: false,
           error: `서버 오류 (${response.status}): ${errorText || response.statusText}`
         };
       }
-      
+
       const data = await response.json();
-      
+
       return {
         success: true,
         data: data.data || data,
         message: data.message
       };
-      
+
     } catch (error) {
       console.error('API 요청 에러:', error);
-      
+
       // 네트워크 오류 처리
       if (error instanceof TypeError && error.message.includes('fetch')) {
         return {
@@ -290,19 +290,19 @@ class ApiClient {
           error: '네트워크 연결을 확인해주세요.'
         };
       }
-      
+
       return {
         success: false,
         error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
       };
     }
   }
-  
+
   // GET 요청
   async get<T>(endpoint: string): Promise<ApiResponse<T>> {
     return this.fetchApi<T>(endpoint, { method: 'GET' });
   }
-  
+
   // POST 요청
   async post<T>(endpoint: string, body: any): Promise<ApiResponse<T>> {
     return this.fetchApi<T>(endpoint, {
@@ -310,7 +310,7 @@ class ApiClient {
       body: JSON.stringify(body),
     });
   }
-  
+
   // PUT 요청
   async put<T>(endpoint: string, body: any): Promise<ApiResponse<T>> {
     return this.fetchApi<T>(endpoint, {
@@ -318,26 +318,26 @@ class ApiClient {
       body: JSON.stringify(body),
     });
   }
-  
+
   // DELETE 요청
   async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
     return this.fetchApi<T>(endpoint, { method: 'DELETE' });
   }
-  
+
   // 파일 업로드
   async uploadFile<T>(endpoint: string, file: File, formData: Record<string, string>): Promise<ApiResponse<T>> {
     try {
       const token = await this.getAuthToken();
       const url = `${this.baseUrl}${endpoint}`;
-      
+
       const form = new FormData();
       form.append('file', file);
-      
+
       // 추가 폼 데이터 추가
       Object.entries(formData).forEach(([key, value]) => {
         form.append(key, value);
       });
-      
+
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -345,13 +345,13 @@ class ApiClient {
         },
         body: form,
       });
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.message || '파일 업로드 실패');
       }
-      
+
       return data;
     } catch (error) {
       console.error('파일 업로드 에러:', error);
@@ -361,7 +361,7 @@ class ApiClient {
       };
     }
   }
-  
+
   // API 메소드들
 
   // 사용자 관련 API
@@ -410,11 +410,11 @@ class ApiClient {
     }
     return this.get<{ seniors: Senior[]; total: number }>(`/api/v1/users/${user.uid}/seniors`);
   }
-  
+
   async getSeniorDetail(seniorId: string): Promise<ApiResponse<Senior>> {
     return this.get<Senior>(`/api/v1/seniors/${seniorId}`);
   }
-  
+
   async createSenior(senior: { name: string; birthDate: string; gender: "male" | "female" | "other"; contactPhone?: string; address?: string; emergencyContact?: any; medicalInfo?: any; caregivers: string[] }): Promise<ApiResponse<Senior>> {
     const auth = getAuth();
     const user = auth.currentUser;
@@ -426,24 +426,24 @@ class ApiClient {
     }
     return this.post<Senior>(`/api/v1/users/${user.uid}/seniors`, senior);
   }
-  
+
   async updateSenior(seniorId: string, senior: Partial<Senior>): Promise<ApiResponse<Senior>> {
     return this.put<Senior>(`/api/v1/seniors/${seniorId}`, senior);
   }
-  
+
   async deleteSenior(seniorId: string): Promise<ApiResponse<void>> {
     return this.delete<void>(`/api/v1/seniors/${seniorId}`);
   }
-  
+
   // 통화 관련 API
   async getCallsByseniorId(seniorId: string): Promise<ApiResponse<Call[]>> {
     return this.get<Call[]>(`/api/v1/seniors/${seniorId}/calls`);
   }
-  
+
   async getCallDetail(callId: string): Promise<ApiResponse<Call>> {
     return this.get<Call>(`/api/v1/calls/detail/${callId}`);
   }
-  
+
   async uploadCall(seniorId: string, file: File, duration: number): Promise<ApiResponse<{ callId: string; uploadUrl: string }>> {
     const formData = new FormData();
     formData.append('file', file);
@@ -452,7 +452,7 @@ class ApiClient {
 
     return this.post<{ callId: string; uploadUrl: string }>(`/api/v1/seniors/${seniorId}/calls`, formData);
   }
-  
+
   // 분석 관련 API
   async getAnalysisByCallId(callId: string): Promise<ApiResponse<Analysis>> {
     return this.get<Analysis>(`/api/v1/analyses/call/${callId}`);
@@ -564,11 +564,11 @@ class ApiClient {
     return this.get<AnalysisInterpretation>(`/api/v1/analyses/${callId}/interpretation`);
   }
 
-  // 공개 분석 결과 조회 (인증 없음)
+  // 공개 분석 결과 조회 (인증 없음) - API 엔드포인트 사용
   async getPublicAnalysis(callId: string): Promise<ApiResponse<any>> {
     try {
       console.log('🌐 공개 분석 결과 조회:', callId);
-      
+
       // 인증 없이 직접 fetch 사용
       const response = await fetch(`${this.baseUrl}/api/v1/calls/public/analysis/${callId}`, {
         method: 'GET',
@@ -582,7 +582,7 @@ class ApiClient {
       }
 
       const data = await response.json();
-      
+
       if (data.success) {
         console.log('✅ 공개 분석 결과 조회 성공');
         return {
