@@ -1,0 +1,31 @@
+{"users": [
+{
+  "localId": "admin_user",
+  "email": "admin@example.com",
+  "emailVerified": true,
+  "displayName": "Admin User",
+  "createdAt": "1758774839008",
+  "disabled": false,
+  "customAttributes": "{\"role\":\"admin\"}",
+  "providerUserInfo": []
+},
+{
+  "localId": "doctor_sample",
+  "email": "doctor@hospital.com",
+  "emailVerified": true,
+  "displayName": "Dr. Kim",
+  "createdAt": "1758774839923",
+  "disabled": false,
+  "customAttributes": "{\"role\":\"doctor\"}",
+  "providerUserInfo": []
+},
+{
+  "localId": "sample_user",
+  "email": "test@example.com",
+  "emailVerified": true,
+  "displayName": "Test User",
+  "createdAt": "1758774837871",
+  "disabled": false,
+  "customAttributes": "{\"role\":\"patient\"}",
+  "providerUserInfo": []
+}]}
