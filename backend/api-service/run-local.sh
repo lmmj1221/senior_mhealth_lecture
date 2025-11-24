@@ -52,7 +52,7 @@ fi
 export ENVIRONMENT=development
 export PORT=8080
 export LOG_LEVEL=INFO
-export GOOGLE_CLOUD_PROJECT=credible-runner-474101-f6
+export GOOGLE_CLOUD_PROJECT=phrasal-ruler-473203-h7
 
 # Step 5: Check Firestore emulator (optional)
 echo -e "${YELLOW}🔍 Checking for Firestore emulator...${NC}"

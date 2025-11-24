@@ -3,7 +3,7 @@
 # Fix Project ID Script - Update all hardcoded project IDs to actual value
 
 OLD_PROJECT_ID="thematic-center-463215-m2"
-NEW_PROJECT_ID="credible-runner-474101-f6"
+NEW_PROJECT_ID="phrasal-ruler-473203-h7"
 
 echo "Updating project ID from ${OLD_PROJECT_ID} to ${NEW_PROJECT_ID}"
 

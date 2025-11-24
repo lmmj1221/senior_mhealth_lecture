@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -19,6 +20,7 @@ import '../services/fcm_service.dart';
 import 'login_screen.dart';
 import 'settings_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:file_picker/file_picker.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -42,6 +44,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _isMonitoring = false;
   final List<String> _detectedFiles = [];
   final Map<String, double> _uploadProgress = {};
+  List<Map<String, dynamic>> _recentCalls = [];
 
   // 중복 업로드 방지를 위한 메서드들
   Future<String?> _getLastUploadedFileName() async {
@@ -156,6 +159,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
         // 백그라운드에서 서비스 초기화
         _initializeServicesInBackground();
+        
+        // 최근 통화 목록 로드
+        _loadRecentCalls();
       } else {
         // 로그인되지 않은 경우에만 개발자 로그인 시도
         final success = await _authService.developmentLogin();
@@ -833,11 +839,67 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _pickAndUploadFile,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.blue[700],
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          side: BorderSide(color: Colors.blue[700]!, width: 2),
+                        ),
+                        icon: const Icon(Icons.file_upload, size: 20),
+                        label: const Text(
+                          '파일 선택하여 업로드',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
 
             const SizedBox(height: 16),
+
+            // 최근 통화 목록
+            if (_recentCalls.isNotEmpty) ...[
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '최근 통화 분석',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: _loadRecentCalls,
+                            child: Text('새로고침'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      ...(_recentCalls.take(3).map((call) => _buildCallItem(call)).toList()),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
 
             // 분석 결과
             Expanded(
@@ -878,6 +940,67 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
+  /// 통화 아이템 UI
+  Widget _buildCallItem(Map<String, dynamic> call) {
+    final callId = call['id'] ?? 'unknown';
+    final fileName = call['fileName'] ?? '파일명 없음';
+    final status = call['analysisStatus'] ?? 'pending';
+    final result = call['analysisResult'];
+
+    Color statusColor = Colors.grey;
+    String statusText = '대기중';
+    
+    if (status == 'completed') {
+      statusColor = Colors.green;
+      statusText = '완료';
+    } else if (status == 'processing') {
+      statusColor = Colors.orange;
+      statusText = '처리중';
+    } else if (status == 'failed') {
+      statusColor = Colors.red;
+      statusText = '실패';
+    }
+
+    return Card(
+      margin: EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        leading: Icon(
+          status == 'completed' ? Icons.check_circle : Icons.hourglass_empty,
+          color: statusColor,
+        ),
+        title: Text(
+          fileName.length > 30 ? '${fileName.substring(0, 30)}...' : fileName,
+          style: TextStyle(fontSize: 14),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(height: 4),
+            Text('상태: $statusText', style: TextStyle(color: statusColor)),
+            if (result != null && result['summary'] != null)
+              Text(
+                result['summary'].toString().length > 50
+                    ? '${result['summary'].toString().substring(0, 50)}...'
+                    : result['summary'].toString(),
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+          ],
+        ),
+        trailing: status == 'completed'
+            ? Icon(Icons.arrow_forward_ios, size: 16)
+            : null,
+        onTap: status == 'completed'
+            ? () {
+                // 결과 표시
+                setState(() {
+                  _analysisResult = jsonEncode(result);
+                });
+              }
+            : null,
+      ),
+    );
+  }
+
   /// 분석 결과를 파싱하여 UI로 표시
   Widget _buildAnalysisResult() {
     try {
@@ -889,10 +1012,58 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       final String summary = result['summary'] ?? _analysisResult;
       final List<dynamic> recommendations = result['recommendations'] ?? [];
       final int score = result['score'] ?? 0;
+      
+      // 정신건강 점수 추출
+      final int? depressionScore = result['depression_score'];
+      final int? anxietyScore = result['anxiety_score'];
+      final int? cognitiveScore = result['cognitive_score'];
+      final String? emotionalState = result['emotional_state'];
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 정신건강 점수 카드
+          if (depressionScore != null || anxietyScore != null || cognitiveScore != null) ...[
+            Card(
+              color: Colors.blue.shade50,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '📊 정신건강 분석 결과',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    if (cognitiveScore != null)
+                      _buildScoreBar('🧠 인지 점수', cognitiveScore, Colors.green, isReversed: false),
+                    if (cognitiveScore != null) const SizedBox(height: 12),
+                    if (depressionScore != null)
+                      _buildScoreBar('😔 우울 점수', depressionScore, Colors.orange, isReversed: true),
+                    if (depressionScore != null) const SizedBox(height: 12),
+                    if (anxietyScore != null)
+                      _buildScoreBar('😰 불안 점수', anxietyScore, Colors.red, isReversed: true),
+                    if (emotionalState != null) ...[
+                      const SizedBox(height: 16),
+                      Text(
+                        '💭 감정 상태: $emotionalState',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           if (score > 0) ...[
             Text(
               '📊 종합 점수: $score/100',
@@ -960,6 +1131,81 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       // JSON 파싱 실패 시 원본 텍스트 표시
       return Text(_analysisResult, style: const TextStyle(fontSize: 14));
     }
+  }
+
+  /// 점수 바 위젯 생성 (0-100점)
+  Widget _buildScoreBar(String label, int score, Color color, {bool isReversed = false}) {
+    // isReversed: true면 낮을수록 좋음 (우울, 불안), false면 높을수록 좋음 (인지)
+    Color barColor;
+    String statusText;
+    
+    if (isReversed) {
+      // 우울/불안 점수: 낮을수록 좋음
+      if (score <= 30) {
+        barColor = Colors.green;
+        statusText = '정상';
+      } else if (score <= 50) {
+        barColor = Colors.orange;
+        statusText = '경증';
+      } else if (score <= 70) {
+        barColor = Colors.deepOrange;
+        statusText = '중등도';
+      } else {
+        barColor = Colors.red;
+        statusText = '주의';
+      }
+    } else {
+      // 인지 점수: 높을수록 좋음
+      if (score >= 80) {
+        barColor = Colors.green;
+        statusText = '정상';
+      } else if (score >= 60) {
+        barColor = Colors.orange;
+        statusText = '경증';
+      } else if (score >= 40) {
+        barColor = Colors.deepOrange;
+        statusText = '중등도';
+      } else {
+        barColor = Colors.red;
+        statusText = '주의';
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            Text(
+              '$score점 ($statusText)',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: barColor,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: score / 100,
+            backgroundColor: Colors.grey.shade300,
+            valueColor: AlwaysStoppedAnimation<Color>(barColor),
+            minHeight: 10,
+          ),
+        ),
+      ],
+    );
   }
 
   /// 웹 분석 결과 페이지 열기
@@ -1063,6 +1309,40 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
+  /// 최근 통화 목록 불러오기 (Firestore에서 직접)
+  Future<void> _loadRecentCalls() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      debugPrint('📋 최근 통화 목록 로드 중...');
+
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('calls')
+          .orderBy('uploadedAt', descending: true)
+          .limit(10)
+          .get();
+
+      final calls = snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'id': doc.id,
+          ...data,
+        };
+      }).toList();
+
+      setState(() {
+        _recentCalls = calls;
+      });
+
+      debugPrint('✅ 통화 목록 로드 완료: ${calls.length}개');
+    } catch (e) {
+      debugPrint('❌ 통화 목록 로드 실패: $e');
+    }
+  }
+
   /// 파일 업로드 (자동 모니터링용)
   Future<void> _uploadFile(File file) async {
     // 중복 체크 먼저 수행
@@ -1100,6 +1380,63 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       });
 
       _showSnackBar('❌ 업로드 실패: ${e.toString()}');
+    }
+  }
+
+  /// 📁 수동으로 파일을 선택하여 업로드 및 분석
+  Future<void> _pickAndUploadFile() async {
+    try {
+      _showSnackBar('파일을 선택하세요...');
+
+      // FilePicker로 오디오 파일 선택
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.audio,
+        allowMultiple: false,
+      );
+
+      if (result == null || result.files.isEmpty) {
+        _showSnackBar('파일 선택이 취소되었습니다');
+        return;
+      }
+
+      final pickedFile = result.files.first;
+      final filePath = pickedFile.path;
+
+      if (filePath == null) {
+        _showSnackBar('파일 경로를 가져올 수 없습니다');
+        return;
+      }
+
+      final file = File(filePath);
+      if (!await file.exists()) {
+        _showSnackBar('파일이 존재하지 않습니다');
+        return;
+      }
+
+      final fileName = pickedFile.name;
+      final fileSize = pickedFile.size;
+
+      _showSnackBar('파일 업로드 중: $fileName (${(fileSize / 1024 / 1024).toStringAsFixed(2)} MB)');
+
+      setState(() {
+        _analysisResult = '📤 파일 업로드 중...\n\n파일: $fileName\n크기: ${(fileSize / 1024 / 1024).toStringAsFixed(2)} MB\n\n⏳ 잠시만 기다려주세요...';
+      });
+
+      // API 서비스를 사용하여 업로드 및 분석
+      final uploadResult = await _apiService.uploadAndAnalyzeAudio(file);
+
+      setState(() {
+        _analysisResult = uploadResult;
+      });
+
+      _showSnackBar('✅ 파일 업로드 완료!\nAI 분석이 시작되었습니다.');
+
+    } catch (e) {
+      debugPrint('❌ 파일 선택/업로드 오류: $e');
+      setState(() {
+        _analysisResult = '❌ 파일 업로드 실패\n\n오류: ${e.toString()}';
+      });
+      _showSnackBar('❌ 파일 업로드 실패: ${e.toString()}');
     }
   }
 

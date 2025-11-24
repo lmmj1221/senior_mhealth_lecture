@@ -23,7 +23,7 @@
   },
   "storage": {
     "rules": "backend/functions/storage.rules",
-    "bucket": "credible-runner-474101-f6.firebasestorage.app"
+    "bucket": "senior-mhealth-202373080.firebasestorage.app"
   },
   "emulators": {
     "auth": {

@@ -54,7 +54,7 @@ class GoogleCloudSpeechConnector:
             credentials_path: 서비스 계정 키 파일 경로
             project_id: GCP 프로젝트 ID
         """
-        self.project_id = project_id or os.getenv('GCP_PROJECT_ID', 'credible-runner-474101-f6')
+        self.project_id = project_id or os.getenv('GCP_PROJECT_ID')
 
         # 인증 설정
         if credentials_path and Path(credentials_path).exists():

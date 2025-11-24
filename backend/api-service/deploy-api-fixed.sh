@@ -17,7 +17,7 @@ echo -e "${GREEN}🚀 Starting API Service deployment with root serviceAccountKe
 cd ../..
 
 # Configuration
-PROJECT_ID="credible-runner-474101-f6"
+PROJECT_ID="phrasal-ruler-473203-h7"
 REGION="asia-northeast3"
 SERVICE_NAME="senior-mhealth-api"
 IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}"
