@@ -10,6 +10,7 @@ from typing import Dict, Any
 from datetime import datetime
 import google.generativeai as genai
 from pydantic import BaseModel, Field
+from app.services.profanity_detector import get_detector
 
 # 로깅 설정
 logger = logging.getLogger(__name__)
@@ -39,6 +40,9 @@ class AnalysisResponse(BaseModel):
     original_text: str = Field(default="", description="원본 텍스트")
     senior_text: str = Field(default="", description="시니어 발화 텍스트")
     guardian_text: str = Field(default="", description="보호자 발화 텍스트")
+    
+    # 비속어 감지 결과
+    profanity_detection: Dict[str, Any] = Field(default_factory=dict, description="비속어 감지 결과")
 
 
 class GoogleAIAnalyzer:
@@ -147,6 +151,11 @@ class GoogleAIAnalyzer:
             senior_text = ""
             guardian_text = ""
             speaker_separation_applied = False
+            
+            # 비속어 감지 수행
+            profanity_detector = get_detector()
+            profanity_result = profanity_detector.detect(request.text)
+            logger.info(f"비속어 감지 완료 - 발견: {profanity_result['has_profanity']}, 개수: {profanity_result['total_count']}")
 
             # 화자 분리 처리
             if request.enable_speaker_separation and self.speaker_separator:
@@ -207,6 +216,9 @@ class GoogleAIAnalyzer:
             result.original_text = original_text
             result.senior_text = senior_text
             result.guardian_text = guardian_text
+            
+            # 비속어 감지 정보 추가
+            result.profanity_detection = profanity_result
 
             logger.info(f"분석 완료 - 신뢰도: {result.confidence}, 분석 유형: {analyzed_text_type}")
             return result
