@@ -1,10 +1,23 @@
-# Fast Deployment - Using Base Image
-FROM asia-northeast3-docker.pkg.dev/credible-runner-474101-f6/cloud-run-source-deploy/senior-mhealth-ai-base:latest
+FROM python:3.11-slim
 
 WORKDIR /app
 
-# Copy application code only (dependencies already in base image)
-COPY app ./app
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . .
+
+# Expose port
+EXPOSE 8080
 
 # Run the application
-CMD exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT}
+CMD exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}

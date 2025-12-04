@@ -9,9 +9,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY app/ ./app/
 
-# Copy service account key from root folder
-COPY ../../serviceAccountKey.json /app/serviceAccountKey.json
-
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 

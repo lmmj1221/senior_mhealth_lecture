@@ -278,7 +278,7 @@ class _IntegratedSignupScreenState extends State<IntegratedSignupScreen> {
 
               // 보호자 성별
               DropdownButtonFormField<String>(
-                value: _selectedUserGender,
+                initialValue: _selectedUserGender,
                 decoration: const InputDecoration(
                   labelText: '보호자 성별',
                   prefixIcon: Icon(Icons.person),
@@ -422,7 +422,7 @@ class _IntegratedSignupScreenState extends State<IntegratedSignupScreen> {
 
               // 성별
               DropdownButtonFormField<String>(
-                value: _selectedSeniorGender,
+                initialValue: _selectedSeniorGender,
                 decoration: const InputDecoration(
                   labelText: '성별',
                   prefixIcon: Icon(Icons.wc),

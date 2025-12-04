@@ -1,7 +1,6 @@
-/**
- * Flutter 앱 설정 로더 (Universal Configuration System)
- * project.config.json에서 설정을 읽어와 환경변수와 병합
- */
+/// Flutter 앱 설정 로더 (Universal Configuration System)
+/// project.config.json에서 설정을 읽어와 환경변수와 병합
+library;
 
 import 'dart:convert';
 import 'dart:io';
@@ -183,9 +182,7 @@ class AppConfig {
     ),
   );
 
-  /**
-   * 프로젝트 설정 파일 로드
-   */
+  /// 프로젝트 설정 파일 로드
   static Future<ProjectConfig?> _loadProjectConfigFile() async {
     try {
       // assets에서 설정 파일 로드 시도
@@ -241,9 +238,7 @@ class AppConfig {
     }
   }
 
-  /**
-   * 환경변수로 설정 덮어쓰기 (Flutter에서는 제한적)
-   */
+  /// 환경변수로 설정 덮어쓰기 (Flutter에서는 제한적)
   static ProjectConfig _applyEnvironmentOverrides(ProjectConfig config) {
     // Flutter에서는 환경변수 접근이 제한적이므로
     // 주로 컴파일 타임 환경변수나 flavor 설정을 사용
@@ -257,9 +252,7 @@ class AppConfig {
     return config;
   }
 
-  /**
-   * 설정 로드 (캐시 포함)
-   */
+  /// 설정 로드 (캐시 포함)
   static Future<ProjectConfig> getConfig({bool forceReload = false}) async {
     if (_cachedConfig != null && !forceReload) {
       return _cachedConfig!;
@@ -287,9 +280,7 @@ class AppConfig {
     return config;
   }
 
-  /**
-   * 편의 함수들
-   */
+  /// 편의 함수들
   static Future<String> getProjectId() async {
     final config = await getConfig();
     return config.project.id;
@@ -320,17 +311,13 @@ class AppConfig {
     return config.services.webApp?.url ?? 'https://your-app.vercel.app';
   }
 
-  /**
-   * 설정 다시 로드
-   */
+  /// 설정 다시 로드
   static Future<ProjectConfig> reloadConfig() async {
     _cachedConfig = null;
     return await getConfig(forceReload: true);
   }
 
-  /**
-   * 개발 환경에서 설정 출력
-   */
+  /// 개발 환경에서 설정 출력
   static Future<void> debugConfig() async {
     if (kDebugMode) {
       final config = await getConfig();
@@ -343,9 +330,7 @@ class AppConfig {
     }
   }
 
-  /**
-   * 설정 검증
-   */
+  /// 설정 검증
   static Future<bool> validateConfig() async {
     try {
       final config = await getConfig();

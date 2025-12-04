@@ -39,7 +39,7 @@ class CacheService {
             LogService.info('CacheService', '✅ 유효한 캐시 발견: $id');
             return data;
           } else {
-            LogService.info('CacheService', '⏰ 캐시 만료: $id (${difference}시간 경과)');
+            LogService.info('CacheService', '⏰ 캐시 만료: $id ($difference시간 경과)');
             // 만료된 캐시 삭제
             await _firestore.collection('cache_analyses').doc(id).delete();
           }

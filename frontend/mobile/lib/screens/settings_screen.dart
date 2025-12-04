@@ -142,7 +142,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Switch(
                     value: _notificationEnabled,
                     onChanged: _updateNotificationSettings,
-                    activeColor: Colors.blue[600],
+                    activeThumbColor: Colors.blue[600],
                   ),
                 ],
               ),

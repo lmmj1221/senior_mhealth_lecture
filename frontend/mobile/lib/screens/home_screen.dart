@@ -704,7 +704,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       Switch(
                         value: _isMonitoring,
                         onChanged: (_) => _toggleMonitoring(),
-                        activeColor: Colors.blue[600],
+                        activeThumbColor: Colors.blue[600],
                       ),
                     ],
                   ),
